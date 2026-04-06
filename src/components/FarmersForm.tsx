@@ -110,6 +110,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
             <td className="border px-2 py-1">
               <div className="font-medium">브로콜리</div>
               <div className="text-muted-foreground" style={{ fontSize: '10px' }}>1/4 바트 1통 = 4송이</div>
+              <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 4kg, 8kg 단위 발주</div>
               {broccoliAvg !== null && (
                 <div className="text-blue-600" style={{ fontSize: '10px' }}>참고: 1kg ≈ {broccoliAvg}송이</div>
               )}
