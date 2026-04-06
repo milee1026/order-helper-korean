@@ -41,6 +41,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'inbound', label: '입고분', type: 'text' },
       { key: 'order', label: '발주량', type: 'text' },
     ],
+    computeTotal: (v) => (Number(v.portioned) || 0) + (Number(v.unportioned) || 0),
   },
 ];
 
