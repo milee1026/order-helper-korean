@@ -150,7 +150,7 @@ const sauceNames: [string, string, string][] = [
   ['ms-curry', '커리소스', '10팩 1박스'],
 ];
 const SAUCE_ITEMS: ItemConfig[] = sauceNames.map(([id, name, unit]) =>
-  ratioItem(id, name, '소스류', unit)
+  ratioItem(id, name, '소스류', unit, { totalLabel: '총재고(팩)' })
 );
 
 // ─── OTHER REFRIGERATED ───
