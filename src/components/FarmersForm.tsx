@@ -148,20 +148,26 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
           {/* 파프리카 */}
           {(() => {
             const d = getItem('f-paprika');
+            const preppedQt = Number(d.values.trimmed) || 0;
+            const unpreppedBoxes = Number(d.values.untrimmed) || 0;
+            const inboundBoxes = Number(d.values.inbound) || 0;
+            const unpreppedConverted = unpreppedBoxes * 3;
+            const inboundConverted = inboundBoxes * 3;
+            const paprikaTotal = preppedQt + unpreppedConverted + inboundConverted;
             return (
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
                   <div className="font-medium">파프리카</div>
                   <div className="text-muted-foreground" style={{ fontSize: '10px' }}>1/4 바트</div>
-                  <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 5kg = 1/4 바트 3바트</div>
+                  <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 5kg 1박스 = 1/4 바트 3개</div>
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     {[
                       { key: 'trimmed', label: '손질(1/4 바트)' },
-                      { key: 'untrimmed', label: '미손질' },
-                      { key: 'inbound', label: '입고분' },
-                      { key: 'orderKg', label: '발주량(kg)' },
+                      { key: 'untrimmed', label: '미손질(5kg 박스)' },
+                      { key: 'inbound', label: '입고분(5kg 박스)' },
+                      { key: 'orderKg', label: '발주량(박스/kg)' },
                     ].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
@@ -176,7 +182,8 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                   </div>
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
-                  총재고: {((Number(d.values.trimmed) || 0) + (Number(d.values.untrimmed) || 0)) || '-'}
+                  <div>총재고(1/4 바트):</div>
+                  <div>{paprikaTotal || '-'}</div>
                 </td>
                 <td className="border px-1 py-1">
                   <Input className="h-7 text-xs px-1" placeholder="메모" value={d.memo} onChange={e => updateMemo('f-paprika', e.target.value)} />
