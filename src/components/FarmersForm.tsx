@@ -186,7 +186,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                   </label>
                 ))}
                 <label className="flex items-center gap-1 text-xs">
-                  <span className="text-muted-foreground whitespace-nowrap">사용 데침 비율</span>
+                  <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                   <RatioSelector value={bdRatio} onChange={v => updateField('f-broccoli', 'usedBlanchedRatio', v)} />
                 </label>
                 {[
@@ -245,7 +245,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                       </label>
                     ))}
                     <label className="flex items-center gap-1 text-xs">
-                      <span className="text-muted-foreground whitespace-nowrap">사용 손질 비율</span>
+                      <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                       <RatioSelector value={pdRatio} onChange={v => updateField('f-paprika', 'usedRatio', v)} />
                     </label>
                     {[
@@ -304,7 +304,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                       </label>
                     ))}
                     <label className="flex items-center gap-1 text-xs">
-                      <span className="text-muted-foreground whitespace-nowrap">사용 소분 비율</span>
+                      <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                       <RatioSelector value={cdRatio} onChange={v => updateField('f-chive', 'usedRatio', v)} />
                     </label>
                     {[
