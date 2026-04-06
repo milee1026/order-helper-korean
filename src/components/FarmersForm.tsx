@@ -150,10 +150,10 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
           {(() => {
             const d = getItem('f-paprika');
             const preppedQt = Number(d.values.trimmed) || 0;
-            const unpreppedBoxes = Number(d.values.untrimmed) || 0;
-            const inboundBoxes = Number(d.values.inbound) || 0;
-            const unpreppedConverted = unpreppedBoxes * 3;
-            const inboundConverted = inboundBoxes * 3;
+            const unpreppedKg = Number(d.values.untrimmed) || 0;
+            const inboundKg = Number(d.values.inbound) || 0;
+            const unpreppedConverted = unpreppedKg / 5 * 3;
+            const inboundConverted = inboundKg / 5 * 3;
             const paprikaTotal = preppedQt + unpreppedConverted + inboundConverted;
             return (
               <tr className="hover:bg-accent/50">
