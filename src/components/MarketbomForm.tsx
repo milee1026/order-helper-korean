@@ -68,7 +68,12 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
                         </div>
                       </td>
                       <td className="border px-1 py-1 text-center font-mono">
-                        {total != null ? (Math.round(total * 100) / 100) : '-'}
+                        {total != null ? (
+                          <div>
+                            <div className="text-muted-foreground" style={{ fontSize: '9px' }}>{item.totalLabel || '총재고'}</div>
+                            <div>{Math.round(total * 100) / 100}</div>
+                          </div>
+                        ) : '-'}
                       </td>
                       <td className="border px-1 py-1">
                         <Input

@@ -17,6 +17,7 @@ export interface ItemConfig {
   unitDesc: string;
   fields: FieldConfig[];
   computeTotal?: (values: Record<string, number>, settings?: AppSettings) => number;
+  totalLabel?: string;
 }
 
 export interface ItemData {
