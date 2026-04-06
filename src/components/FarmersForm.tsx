@@ -284,9 +284,6 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     {[
                       { key: 'unusedPortioned', label: '미사용 소분(1/4 바트)' },
-                      { key: 'unportionedBags', label: '미소분(봉지)' },
-                      { key: 'inbound', label: '입고분(봉지)' },
-                      { key: 'orderBags', label: '발주량(봉지)' },
                     ].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
@@ -302,6 +299,21 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                       <span className="text-muted-foreground whitespace-nowrap">사용 소분 비율</span>
                       <RatioSelector value={cdRatio} onChange={v => updateField('f-chive', 'usedRatio', v)} />
                     </label>
+                    {[
+                      { key: 'unportionedBags', label: '미소분(봉지)' },
+                      { key: 'inbound', label: '입고분(봉지)' },
+                      { key: 'orderBags', label: '발주량(봉지)' },
+                    ].map(f => (
+                      <label key={f.key} className="flex items-center gap-1 text-xs">
+                        <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
+                        <Input
+                          type="number"
+                          className="w-16 h-7 text-xs px-1"
+                          value={cd.values[f.key] ?? ''}
+                          onChange={e => updateField('f-chive', f.key, e.target.value)}
+                        />
+                      </label>
+                    ))}
                   </div>
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
