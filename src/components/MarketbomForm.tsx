@@ -62,6 +62,7 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
                               field={f}
                               value={d.values[f.key]}
                               onChange={(val) => updateField(item.id, f.key, val)}
+                              unitDesc={item.unitDesc}
                             />
                           ))}
                         </div>
@@ -89,11 +90,15 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
   );
 }
 
-function FieldInput({ field, value, onChange }: {
+function FieldInput({ field, value, onChange, unitDesc }: {
   field: { key: string; label: string; type: string };
   value: string | number | undefined;
   onChange: (val: string | number) => void;
+  unitDesc?: string;
 }) {
+  const showUnit = (field.key === 'inbound' || field.key === 'order') && unitDesc && !field.label.includes('(');
+  const primaryUnit = unitDesc ? extractPrimaryUnit(unitDesc) : '';
+
   if (field.type === 'ratio') {
     return (
       <label className="flex items-center gap-1">
@@ -111,6 +116,14 @@ function FieldInput({ field, value, onChange }: {
         value={value ?? ''}
         onChange={e => onChange(field.type === 'number' ? e.target.value : e.target.value)}
       />
+      {showUnit && <span className="text-muted-foreground whitespace-nowrap" style={{ fontSize: '10px' }}>{primaryUnit}</span>}
     </label>
   );
+}
+
+function extractPrimaryUnit(unitDesc: string): string {
+  // e.g. "75개 4팩 1박스" → "박스", "1팩" → "팩", "락" → "락"
+  const parts = unitDesc.trim().split(/\s+/);
+  const last = parts[parts.length - 1];
+  return last.replace(/^\d+/, '');
 }

@@ -30,7 +30,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="bg-muted">
-            <th className="border px-2 py-1 text-left w-20">품목</th>
+            <th className="border px-2 py-1 text-left w-28">품목</th>
             <th className="border px-2 py-1 text-left" colSpan={4}>입력 항목</th>
             <th className="border px-2 py-1 text-left w-20">총재고</th>
             <th className="border px-2 py-1 text-left w-32">메모</th>
@@ -44,7 +44,10 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
               : undefined;
             return (
               <tr key={item.id} className="hover:bg-accent/50">
-                <td className="border px-2 py-1 font-medium">{item.name}</td>
+                <td className="border px-2 py-1">
+                  <div className="font-medium">{item.name}</div>
+                  <div className="text-muted-foreground" style={{ fontSize: '10px' }}>{item.unitDesc}</div>
+                </td>
                 <td className="border px-1 py-1" colSpan={4}>
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     {item.fields.map(f => (
