@@ -175,7 +175,9 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                     ))}
                   </div>
                 </td>
-                <td className="border px-2 py-1 text-center font-mono text-xs">-</td>
+                <td className="border px-2 py-1 text-center font-mono text-xs">
+                  총재고: {((Number(d.values.trimmed) || 0) + (Number(d.values.untrimmed) || 0)) || '-'}
+                </td>
                 <td className="border px-1 py-1">
                   <Input className="h-7 text-xs px-1" placeholder="메모" value={d.memo} onChange={e => updateMemo('f-paprika', e.target.value)} />
                 </td>
