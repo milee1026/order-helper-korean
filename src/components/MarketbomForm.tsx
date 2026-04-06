@@ -117,6 +117,7 @@ function FieldInput({ field, value, onChange, unitDesc }: {
       <span className="text-muted-foreground whitespace-nowrap">{field.label}</span>
       <Input
         type={field.type === 'text' ? 'text' : 'number'}
+        min={field.type === 'number' ? '0' : undefined}
         className="w-14 h-6 text-xs px-1"
         value={value ?? ''}
         onChange={e => onChange(field.type === 'number' ? e.target.value : e.target.value)}
