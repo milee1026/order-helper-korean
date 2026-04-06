@@ -25,15 +25,29 @@ export function SettingsExport() {
     updateSettings({ meatPacksPerTray: { ...settings.meatPacksPerTray, [itemId]: val } });
   };
 
-  const handleExportAll = () => {
+  const handleExportAllCsv = () => {
     const records = loadRecords();
     const rows = recordsToCsvRows(records);
     const csv = csvRowsToString(rows);
     downloadCsv(csv, `inventory-data-${new Date().toISOString().split('T')[0]}.csv`);
-    toast({ title: '다운로드 완료', description: `${rows.length}행 내보내기` });
+    toast({ title: '다운로드 완료', description: `${rows.length}행 CSV 내보내기` });
   };
 
-  const handleExportAnalysis = () => {
+  const handleExportAllExcel = () => {
+    const records = loadRecords();
+    const result = exportToExcel(records, settings);
+    if (result.count === 0) { toast({ title: '내보낼 데이터가 없습니다', variant: 'destructive' }); return; }
+    toast({ title: '다운로드 완료', description: `${result.count}행 Excel 내보내기` });
+  };
+
+  const handleExportAllPdf = () => {
+    const records = loadRecords();
+    const result = exportToPdf(records, settings);
+    if (result.count === 0) { toast({ title: '내보낼 데이터가 없습니다', variant: 'destructive' }); return; }
+    toast({ title: '다운로드 완료', description: `${result.count}행 PDF 내보내기` });
+  };
+
+  const handleExportAnalysisCsv = () => {
     const records = loadRecords();
     const analysis = computeAnalysis(records, settings);
     const headers = ['품목', '카테고리', '발주횟수', '평균발주', '최빈발주', '평균재고', '최소재고', '최대재고', '중위재고', '평균입고', '기본발주후보', '최소기준후보'];
@@ -47,6 +61,22 @@ export function SettingsExport() {
     ];
     downloadCsv(lines.join('\n'), `inventory-analysis-${new Date().toISOString().split('T')[0]}.csv`);
     toast({ title: '분석 CSV 다운로드 완료' });
+  };
+
+  const handleExportAnalysisExcel = () => {
+    const records = loadRecords();
+    const analysis = computeAnalysis(records, settings);
+    const result = exportAnalysisToExcel(analysis);
+    if (result.count === 0) { toast({ title: '내보낼 데이터가 없습니다', variant: 'destructive' }); return; }
+    toast({ title: '분석 Excel 다운로드 완료' });
+  };
+
+  const handleExportAnalysisPdf = () => {
+    const records = loadRecords();
+    const analysis = computeAnalysis(records, settings);
+    const result = exportAnalysisToPdf(analysis);
+    if (result.count === 0) { toast({ title: '내보낼 데이터가 없습니다', variant: 'destructive' }); return; }
+    toast({ title: '분석 PDF 다운로드 완료' });
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
