@@ -260,7 +260,6 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
                   {pdUntrimmedKg > 0 && <div>미손질→{round2(pdUntrimmedConv)}</div>}
-                  {pdInboundKg > 0 && <div>입고→{round2(pdInboundConv)}</div>}
                   <div>총재고(1/4 바트):</div>
                   <div>{pdTotal ? round2(pdTotal) : '-'}</div>
                 </td>
@@ -318,7 +317,6 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
                   {cdUnportBags > 0 && <div>미소분→{round2(cdUnportConv)}</div>}
-                  {cdInboundBags > 0 && <div>입고→{round2(cdInboundConv)}</div>}
                   <div>총재고(1/4 바트):</div>
                   <div>{cdTotal ? round2(cdTotal) : '-'}</div>
                 </td>
