@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { DailyRecord, ItemData, Vendor, RecorderType } from '@/types';
 import { getItemsByVendor } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
-import { addRecord, getRecordsByDate, loadSettings } from '@/utils/storage';
+import { addRecord, getRecordsByDate, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
 import { FarmersForm } from '@/components/FarmersForm';
 import { MarketbomForm } from '@/components/MarketbomForm';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ export function TodayRecord() {
   const orderDays = getOrderDays(vendor);
   const isOrderDay = orderDays.includes(dayOfWeek);
 
-  // Load existing record for this date+vendor
+  // Load existing record or draft for this date+vendor
   useEffect(() => {
     const existing = getRecordsByDate(date).find(r => r.vendor === vendor);
     if (existing) {
@@ -34,14 +34,36 @@ export function TodayRecord() {
       setEditingId(existing.id);
       setRecorder(existing.recorderType);
     } else {
-      setItemData({});
+      const draft = loadDraft(date, vendor);
+      if (draft) {
+        setItemData(draft.itemData);
+        setRecorder(draft.recorder);
+      } else {
+        setItemData({});
+      }
       setEditingId(null);
     }
   }, [date, vendor]);
 
-  const handleItemChange = useCallback((itemId: string, data: ItemData) => {
-    setItemData(prev => ({ ...prev, [itemId]: { ...data, itemId } }));
+  // Auto-save draft on every change
+  const handleItemChange = useCallback((itemId: string, d: ItemData) => {
+    setItemData(prev => {
+      const next = { ...prev, [itemId]: { ...d, itemId } };
+      return next;
+    });
   }, []);
+
+  // Persist draft to localStorage whenever itemData, recorder, date, or vendor changes
+  useEffect(() => {
+    // Only save draft if there's actual data and no saved record yet
+    const hasData = Object.keys(itemData).some(k => {
+      const d = itemData[k];
+      return d && (Object.values(d.values).some(v => v !== '' && v !== 0) || d.memo);
+    });
+    if (hasData && !editingId) {
+      saveDraft(date, vendor, { itemData, recorder });
+    }
+  }, [itemData, recorder, date, vendor, editingId]);
 
   const handleSave = () => {
     const items = getItemsByVendor(vendor);
@@ -62,6 +84,7 @@ export function TodayRecord() {
     };
     addRecord(record);
     setEditingId(record.id);
+    deleteDraft(date, vendor);
     toast({ title: '저장 완료', description: `${date} ${vendor === 'farmers' ? '파머스' : '마켓봄'} 기록이 저장되었습니다.` });
   };
 
