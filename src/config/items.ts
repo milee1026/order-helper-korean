@@ -117,7 +117,7 @@ const MEAT_ITEMS: ItemConfig[] = [
     totalLabel: '총재고(팩)',
     computeTotal: (v, s) => {
       const ppt = s?.meatPacksPerTray?.['m-pork'] || 10;
-      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0) + (Number(v.inbound) || 0) * ppt;
+      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0);
     },
   },
   { id: 'm-chicken', name: '닭', category: '고기류', vendor: 'marketbom', unitDesc: '10kg 1판',
