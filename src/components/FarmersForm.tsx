@@ -105,7 +105,8 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
           <tr className="hover:bg-accent/50">
             <td className="border px-2 py-1">
               <div className="font-medium">샐야</div>
-              <div className="text-muted-foreground" style={{ fontSize: '10px' }}>2kg=1봉지=1락</div>
+              <div className="text-muted-foreground" style={{ fontSize: '10px' }}>2kg = 1봉지 = 1락</div>
+              <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 2kg 단위 발주</div>
             </td>
             <td className="border px-1 py-1">
               <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -219,8 +220,8 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
                   <div className="font-medium">파프리카</div>
-                  <div className="text-muted-foreground" style={{ fontSize: '10px' }}>1/4 바트</div>
-                  <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 5kg 1박스 = 1/4 바트 3개</div>
+              <div className="text-muted-foreground" style={{ fontSize: '10px' }}>5kg = 1/4 바트 3통</div>
+              <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 5kg 단위 발주</div>
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -276,8 +277,8 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
                   <div className="font-medium">쪽파</div>
-                  <div className="text-muted-foreground" style={{ fontSize: '10px' }}>1/4 바트</div>
-                  <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 1봉지(≈900g) = 1/4 바트 2개</div>
+              <div className="text-muted-foreground" style={{ fontSize: '10px' }}>1봉지(900g) = 1/4 바트 2통</div>
+              <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 1봉지(900g) 단위 발주</div>
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
