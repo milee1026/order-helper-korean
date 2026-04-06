@@ -52,7 +52,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
   const saladData = getItem('f-salad');
   const saladOrderKg = Number(saladData.values.orderKg) || 0;
   const saladOrderRack = saladOrderKg > 0 ? saladOrderKg / 2 : null;
-  const saladTotal = (Number(saladData.values.morningStock) || 0) + (Number(saladData.values.inbound) || 0);
+  const saladTotal = Number(saladData.values.morningStock) || 0;
 
   const brocData = getItem('f-broccoli');
   const brocTotal = (Number(brocData.values.blanched) || 0) + (Number(brocData.values.trimmed) || 0) + (Number(brocData.values.untrimmed) || 0) / 4;
@@ -151,10 +151,8 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
             const d = getItem('f-paprika');
             const preppedQt = Number(d.values.trimmed) || 0;
             const unpreppedKg = Number(d.values.untrimmed) || 0;
-            const inboundKg = Number(d.values.inbound) || 0;
             const unpreppedConverted = unpreppedKg / 5 * 3;
-            const inboundConverted = inboundKg / 5 * 3;
-            const paprikaTotal = preppedQt + unpreppedConverted + inboundConverted;
+            const paprikaTotal = preppedQt + unpreppedConverted;
             return (
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
@@ -198,10 +196,8 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
             const d = getItem('f-chive');
             const portionedQt = Number(d.values.portioned) || 0;
             const unportionedBags = Number(d.values.unportioned) || 0;
-            const inboundBags = Number(d.values.inbound) || 0;
             const unportionedConverted = unportionedBags * 2;
-            const inboundConverted = inboundBags * 2;
-            const chiveTotal = portionedQt + unportionedConverted + inboundConverted;
+            const chiveTotal = portionedQt + unportionedConverted;
             return (
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
