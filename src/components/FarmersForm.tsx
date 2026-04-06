@@ -30,7 +30,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="bg-muted">
-            <th className="border px-2 py-1 text-left w-20">품목</th>
+            <th className="border px-2 py-1 text-left w-28">품목</th>
             <th className="border px-2 py-1 text-left" colSpan={4}>입력 항목</th>
             <th className="border px-2 py-1 text-left w-20">총재고</th>
             <th className="border px-2 py-1 text-left w-32">메모</th>
