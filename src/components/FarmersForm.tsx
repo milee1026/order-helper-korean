@@ -166,9 +166,9 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     {[
                       { key: 'trimmed', label: '손질(1/4 바트)' },
-                      { key: 'untrimmed', label: '미손질(5kg 박스)' },
-                      { key: 'inbound', label: '입고분(5kg 박스)' },
-                      { key: 'orderKg', label: '발주량(박스/kg)' },
+                      { key: 'untrimmed', label: '미손질(kg)' },
+                      { key: 'inbound', label: '입고분(kg)' },
+                      { key: 'orderKg', label: '발주량(kg)' },
                     ].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
