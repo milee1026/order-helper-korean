@@ -286,10 +286,10 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                         <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={cd.values[f.key] ?? ''} onChange={e => updateField('f-chive', f.key, e.target.value)} />
                       </label>
                     ))}
-                    <label className="flex items-center gap-1 text-xs">
+                    <div className="flex items-center gap-1 text-xs">
                       <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                       <RatioSelector value={cdRatio} onChange={v => updateField('f-chive', 'usedRatio', v)} />
-                    </label>
+                    </div>
                     {[{ key: 'unportionedBags', label: '미소분(봉지)' }, { key: 'inbound', label: '입고분(봉지)' }, { key: 'orderBags', label: '발주량(봉지)' }].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
