@@ -182,10 +182,9 @@ const REFRIG_ITEMS: ItemConfig[] = [
   {
     id: 'mr-myeongyi', name: '명이나물', category: '그 외 냉장제품', vendor: 'marketbom', unitDesc: '10kg 1통',
     fields: [
-      { key: 'quarterFull', label: '사용중(1/4 바트)', type: 'number' },
-      { key: 'quarterRatio', label: '사용중 비율', type: 'ratio' },
-      { key: 'halfStock', label: '손질완료(1/2 바트)', type: 'number' },
-      { key: 'halfRatio', label: '손질완료 비율', type: 'ratio' },
+      { key: 'unusedQuarter', label: '미사용(1/4 바트)', type: 'number' },
+      { key: 'quarterRatio', label: '사용중(1/4) 비율', type: 'ratio' },
+      { key: 'halfRatio', label: '손질(1/2) 사용중 비율', type: 'ratio' },
       { key: 'inbound', label: '입고분(통)', type: 'number' },
       { key: 'order', label: '발주량(통)', type: 'number' },
     ],
