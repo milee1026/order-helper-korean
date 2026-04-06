@@ -188,15 +188,15 @@ const REFRIG_ITEMS: ItemConfig[] = [
 const FROZEN_ITEMS: ItemConfig[] = [
   ratioItem('mf-sweetpotato', '고구마', '냉동제품', '2팩 1박스', {
     totalLabel: '총재고(팩)',
-    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 2,
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }),
   ratioItem('mf-pumpkin', '단호박', '냉동제품', '5팩 1박스', {
     totalLabel: '총재고(팩)',
-    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 5,
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }),
   ratioItem('mf-greenbean', '그린빈', '냉동제품', '10팩 1박스', {
     totalLabel: '총재고(팩)',
-    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 10,
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }),
 ];
 
