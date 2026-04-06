@@ -117,6 +117,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                     <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                     <Input
                       type="number"
+                      min="0"
                       className="w-16 h-7 text-xs px-1"
                       value={sd.values[f.key] ?? ''}
                       onChange={e => updateField('f-salad', f.key, e.target.value)}
@@ -136,6 +137,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                     <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                     <Input
                       type="number"
+                      min="0"
                       className="w-16 h-7 text-xs px-1"
                       value={sd.values[f.key] ?? ''}
                       onChange={e => updateField('f-salad', f.key, e.target.value)}
@@ -175,6 +177,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                     <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                     <Input
                       type="number"
+                      min="0"
                       className="w-16 h-7 text-xs px-1"
                       value={bd.values[f.key] ?? ''}
                       onChange={e => updateField('f-broccoli', f.key, e.target.value)}
@@ -196,6 +199,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                     <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                     <Input
                       type="number"
+                      min="0"
                       className="w-16 h-7 text-xs px-1"
                       value={bd.values[f.key] ?? ''}
                       onChange={e => updateField('f-broccoli', f.key, e.target.value)}
@@ -232,6 +236,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                         <Input
                           type="number"
+                          min="0"
                           className="w-16 h-7 text-xs px-1"
                           value={pd.values[f.key] ?? ''}
                           onChange={e => updateField('f-paprika', f.key, e.target.value)}
@@ -251,6 +256,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                         <Input
                           type="number"
+                          min="0"
                           className="w-16 h-7 text-xs px-1"
                           value={pd.values[f.key] ?? ''}
                           onChange={e => updateField('f-paprika', f.key, e.target.value)}
@@ -289,6 +295,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                         <Input
                           type="number"
+                          min="0"
                           className="w-16 h-7 text-xs px-1"
                           value={cd.values[f.key] ?? ''}
                           onChange={e => updateField('f-chive', f.key, e.target.value)}
@@ -308,6 +315,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                         <Input
                           type="number"
+                          min="0"
                           className="w-16 h-7 text-xs px-1"
                           value={cd.values[f.key] ?? ''}
                           onChange={e => updateField('f-chive', f.key, e.target.value)}
