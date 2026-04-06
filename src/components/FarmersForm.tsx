@@ -225,7 +225,6 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                           value={d.values[f.key] ?? ''}
                           onChange={e => updateField('f-chive', f.key, e.target.value)}
                         />
-                        />
                       </label>
                     ))}
                   </div>
