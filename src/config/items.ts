@@ -158,7 +158,7 @@ const SAUCE_ITEMS: ItemConfig[] = sauceNames.map(([id, name, unit]) => {
   if (mult) {
     return ratioItem(id, name, '소스류', unit, {
       totalLabel: '총재고(팩)',
-      computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * mult,
+      computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
     });
   }
   return ratioItem(id, name, '소스류', unit, { totalLabel: '총재고(팩)' });
