@@ -3,41 +3,42 @@ import { ItemConfig, AppSettings } from '@/types';
 // ─── FARMERS ───
 export const FARMERS_ITEMS: ItemConfig[] = [
   {
-    id: 'f-salad', name: '샐야', category: '야채', vendor: 'farmers', unitDesc: '락',
+    id: 'f-salad', name: '샐야', category: '야채', vendor: 'farmers', unitDesc: '락 (2kg=1락)',
     fields: [
       { key: 'morningStock', label: '아침 재고(락)', type: 'number' },
       { key: 'inbound', label: '입고분(락)', type: 'number' },
-      { key: 'order', label: '발주량(락)', type: 'number' },
+      { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
     computeTotal: (v) => (Number(v.morningStock) || 0) + (Number(v.inbound) || 0),
   },
   {
-    id: 'f-broccoli', name: '브로콜리', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 / 송이',
+    id: 'f-broccoli', name: '브로콜리', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (1통=4송이)',
     fields: [
       { key: 'blanched', label: '데친(1/4 바트)', type: 'number' },
       { key: 'trimmed', label: '손질(1/4 바트)', type: 'number' },
       { key: 'untrimmed', label: '미손질(송이)', type: 'number' },
-      { key: 'inbound', label: '입고분', type: 'text' },
-      { key: 'order', label: '발주량', type: 'number' },
+      { key: 'inboundKg', label: '입고분(kg)', type: 'number' },
+      { key: 'inboundCount', label: '입고분(송이)', type: 'number' },
+      { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
     computeTotal: (v) => (Number(v.blanched) || 0) + (Number(v.trimmed) || 0) + (Number(v.untrimmed) || 0) / 4,
   },
   {
-    id: 'f-paprika', name: '파프리카', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트',
+    id: 'f-paprika', name: '파프리카', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (5kg≈3바트)',
     fields: [
       { key: 'trimmed', label: '손질(1/4 바트)', type: 'number' },
       { key: 'untrimmed', label: '미손질', type: 'number' },
       { key: 'inbound', label: '입고분', type: 'number' },
-      { key: 'order', label: '발주량', type: 'number' },
+      { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
   },
   {
-    id: 'f-chive', name: '쪽파', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트',
+    id: 'f-chive', name: '쪽파', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (900g 1봉지=2바트)',
     fields: [
       { key: 'portioned', label: '소분(1/4 바트)', type: 'number' },
       { key: 'unportioned', label: '미소분', type: 'number' },
-      { key: 'inbound', label: '입고분', type: 'number' },
-      { key: 'order', label: '발주량', type: 'number' },
+      { key: 'inbound', label: '입고분', type: 'text' },
+      { key: 'order', label: '발주량', type: 'text' },
     ],
   },
 ];
