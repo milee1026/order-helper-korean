@@ -87,7 +87,6 @@ export function TodayRecord() {
     addRecord(record);
     setEditingId(record.id);
     deleteDraft(date, vendor);
-    setItemData({});
     toast({ title: '저장 완료', description: `${date} ${vendor === 'farmers' ? '파머스' : '마켓봄'} 기록이 저장되었습니다.` });
   };
 
