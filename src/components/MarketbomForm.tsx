@@ -183,10 +183,10 @@ function FieldInput({ field, value, onChange, unitDesc }: {
 
   if (field.type === 'ratio') {
     return (
-      <label className="flex items-center gap-1">
+      <div className="flex items-center gap-1">
         <span className="text-muted-foreground whitespace-nowrap">{field.label}</span>
         <RatioSelector value={Number(value) || 0} onChange={onChange} />
-      </label>
+      </div>
     );
   }
   return (

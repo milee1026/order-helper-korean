@@ -351,9 +351,9 @@ function MobileNumField({ label, value, onChange }: { label: string; value: stri
 
 function MobileRatioField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
-    <label className="flex items-center justify-between gap-2 text-xs">
+    <div className="flex items-center justify-between gap-2 text-xs">
       <span className="text-muted-foreground">{label}</span>
       <RatioSelector value={value} onChange={onChange} />
-    </label>
+    </div>
   );
 }
