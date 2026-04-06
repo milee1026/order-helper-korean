@@ -39,8 +39,8 @@ export const FARMERS_ITEMS: ItemConfig[] = [
     fields: [
       { key: 'portioned', label: '소분(1/4 바트)', type: 'number' },
       { key: 'unportioned', label: '미소분', type: 'number' },
-      { key: 'inbound', label: '입고분', type: 'text' },
-      { key: 'order', label: '발주량', type: 'text' },
+      { key: 'inbound', label: '입고분(봉지)', type: 'number' },
+      { key: 'order', label: '발주량(봉지)', type: 'number' },
     ],
     computeTotal: (v) => (Number(v.portioned) || 0) + (Number(v.unportioned) || 0),
   },
