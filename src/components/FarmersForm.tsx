@@ -37,9 +37,10 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
 
   const updateField = (itemId: string, key: string, val: string | number) => {
     const current = getItem(itemId);
-    const updated = { ...current, values: { ...current.values, [key]: val } };
-    if (key === 'inbound') updated.inbound = val;
-    if (key === 'order' || key === 'orderKg' || key === 'orderBags') updated.order = val;
+    const sanitized = typeof val === 'string' ? val.replace(/-/g, '') : (val < 0 ? 0 : val);
+    const updated = { ...current, values: { ...current.values, [key]: sanitized } };
+    if (key === 'inbound') updated.inbound = sanitized;
+    if (key === 'order' || key === 'orderKg' || key === 'orderBags') updated.order = sanitized;
     onChange(itemId, updated);
   };
 
