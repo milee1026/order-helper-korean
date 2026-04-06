@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-const RATIOS = [0, 0.3, 0.5, 0.7];
+const RATIOS = [0.7, 0.5, 0.3, 0];
 
 interface RatioSelectorProps {
   value: number;
