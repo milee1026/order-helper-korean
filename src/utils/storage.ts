@@ -2,6 +2,47 @@ import { DailyRecord, AppSettings } from '@/types';
 
 const RECORDS_KEY = 'inventory-records';
 const SETTINGS_KEY = 'inventory-settings';
+const DRAFT_KEY = 'inventory-drafts';
+
+// Draft = temporary per date+vendor input data
+export interface DraftData {
+  itemData: Record<string, import('@/types').ItemData>;
+  recorder: import('@/types').RecorderType;
+}
+
+function draftKey(date: string, vendor: string): string {
+  return `${date}__${vendor}`;
+}
+
+export function saveDraft(date: string, vendor: string, draft: DraftData) {
+  try {
+    const all = loadAllDrafts();
+    all[draftKey(date, vendor)] = draft;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(all));
+  } catch { /* ignore */ }
+}
+
+export function loadDraft(date: string, vendor: string): DraftData | null {
+  try {
+    const all = loadAllDrafts();
+    return all[draftKey(date, vendor)] || null;
+  } catch { return null; }
+}
+
+export function deleteDraft(date: string, vendor: string) {
+  try {
+    const all = loadAllDrafts();
+    delete all[draftKey(date, vendor)];
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(all));
+  } catch { /* ignore */ }
+}
+
+function loadAllDrafts(): Record<string, DraftData> {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
 
 export const defaultSettings: AppSettings = {
   trackingWeeks: 2,
