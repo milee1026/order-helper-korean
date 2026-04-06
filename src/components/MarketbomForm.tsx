@@ -90,11 +90,15 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
   );
 }
 
-function FieldInput({ field, value, onChange }: {
+function FieldInput({ field, value, onChange, unitDesc }: {
   field: { key: string; label: string; type: string };
   value: string | number | undefined;
   onChange: (val: string | number) => void;
+  unitDesc?: string;
 }) {
+  const showUnit = (field.key === 'inbound' || field.key === 'order') && unitDesc && !field.label.includes('(');
+  const primaryUnit = unitDesc ? extractPrimaryUnit(unitDesc) : '';
+
   if (field.type === 'ratio') {
     return (
       <label className="flex items-center gap-1">
