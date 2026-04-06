@@ -49,6 +49,8 @@ export const FARMERS_ITEMS: ItemConfig[] = [
 function ratioItem(id: string, name: string, cat: string, unitDesc: string, opts?: {
   usedLabel?: string; unusedLabel?: string; ratioOnly?: boolean; unusedOnly?: boolean;
   noInbound?: boolean; customFields?: ItemConfig['fields'];
+  totalLabel?: string;
+  computeTotal?: ItemConfig['computeTotal'];
 }): ItemConfig {
   const fields: ItemConfig['fields'] = opts?.customFields || [];
   if (!opts?.customFields) {
@@ -63,9 +65,29 @@ function ratioItem(id: string, name: string, cat: string, unitDesc: string, opts
     if (!opts?.noInbound) fields.push({ key: 'inbound', label: '입고분', type: 'number' });
     fields.push({ key: 'order', label: '발주량', type: 'number' });
   }
+
+  // Determine the unit suffix from unitDesc for totalLabel
+  const defaultLabel = (() => {
+    const parts = unitDesc.trim().split(/\s+/);
+    const last = parts[parts.length - 1];
+    const unit = last.replace(/^\d+/, '');
+    return `총재고(${unit})`;
+  })();
+
+  const defaultCompute: ItemConfig['computeTotal'] = (v) => {
+    if (opts?.ratioOnly) {
+      return (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0);
+    }
+    if (opts?.unusedOnly) {
+      return (Number(v.unused) || 0) + (Number(v.inbound) || 0);
+    }
+    return (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0);
+  };
+
   return {
     id, name, category: cat, vendor: 'marketbom', unitDesc, fields,
-    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
+    totalLabel: opts?.totalLabel || defaultLabel,
+    computeTotal: opts?.computeTotal || defaultCompute,
   };
 }
 
