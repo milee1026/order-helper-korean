@@ -9,7 +9,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'inbound', label: '입고분(락)', type: 'number' },
       { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
-    computeTotal: (v) => (Number(v.morningStock) || 0) + (Number(v.inbound) || 0),
+    computeTotal: (v) => (Number(v.morningStock) || 0),
   },
   {
     id: 'f-broccoli', name: '브로콜리', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (1통=4송이)',
