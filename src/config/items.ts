@@ -27,8 +27,8 @@ export const FARMERS_ITEMS: ItemConfig[] = [
     id: 'f-paprika', name: '파프리카', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (5kg = 1/4 바트 3개)',
     fields: [
       { key: 'trimmed', label: '손질(1/4 바트)', type: 'number' },
-      { key: 'untrimmed', label: '미손질(5kg 박스)', type: 'number' },
-      { key: 'inbound', label: '입고분(5kg 박스)', type: 'number' },
+      { key: 'untrimmed', label: '미손질(kg)', type: 'number' },
+      { key: 'inbound', label: '입고분(kg)', type: 'number' },
       { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
     totalLabel: '총재고(1/4 바트)',
