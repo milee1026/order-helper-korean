@@ -149,9 +149,19 @@ const sauceNames: [string, string, string][] = [
   ['ms-rose', '로제소스', '10팩 1박스'],
   ['ms-curry', '커리소스', '10팩 1박스'],
 ];
-const SAUCE_ITEMS: ItemConfig[] = sauceNames.map(([id, name, unit]) =>
-  ratioItem(id, name, '소스류', unit, { totalLabel: '총재고(팩)' })
-);
+const SAUCE_INBOUND_MULTIPLIER: Record<string, number> = {
+  'ms-salpa': 10, 'ms-rose': 10, 'ms-curry': 10,
+};
+const SAUCE_ITEMS: ItemConfig[] = sauceNames.map(([id, name, unit]) => {
+  const mult = SAUCE_INBOUND_MULTIPLIER[id];
+  if (mult) {
+    return ratioItem(id, name, '소스류', unit, {
+      totalLabel: '총재고(팩)',
+      computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * mult,
+    });
+  }
+  return ratioItem(id, name, '소스류', unit, { totalLabel: '총재고(팩)' });
+});
 
 // ─── OTHER REFRIGERATED ───
 const REFRIG_ITEMS: ItemConfig[] = [
