@@ -150,10 +150,10 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
           {(() => {
             const d = getItem('f-paprika');
             const preppedQt = Number(d.values.trimmed) || 0;
-            const unpreppedBoxes = Number(d.values.untrimmed) || 0;
-            const inboundBoxes = Number(d.values.inbound) || 0;
-            const unpreppedConverted = unpreppedBoxes * 3;
-            const inboundConverted = inboundBoxes * 3;
+            const unpreppedKg = Number(d.values.untrimmed) || 0;
+            const inboundKg = Number(d.values.inbound) || 0;
+            const unpreppedConverted = unpreppedKg / 5 * 3;
+            const inboundConverted = inboundKg / 5 * 3;
             const paprikaTotal = preppedQt + unpreppedConverted + inboundConverted;
             return (
               <tr className="hover:bg-accent/50">
@@ -166,9 +166,9 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     {[
                       { key: 'trimmed', label: '손질(1/4 바트)' },
-                      { key: 'untrimmed', label: '미손질(5kg 박스)' },
-                      { key: 'inbound', label: '입고분(5kg 박스)' },
-                      { key: 'orderKg', label: '발주량(박스/kg)' },
+                      { key: 'untrimmed', label: '미손질(kg)' },
+                      { key: 'inbound', label: '입고분(kg)' },
+                      { key: 'orderKg', label: '발주량(kg)' },
                     ].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
@@ -215,16 +215,15 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                       { key: 'portioned', label: '소분(1/4 바트)' },
                       { key: 'unportioned', label: '미소분(봉지)' },
                       { key: 'inbound', label: '입고분(봉지)' },
-                      { key: 'order', label: '발주량(봉지/g)' },
+                      { key: 'order', label: '발주량(봉지)' },
                     ].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                         <Input
-                          type={f.key === 'order' ? 'text' : 'number'}
-                          className={`${f.key === 'order' ? 'w-20' : 'w-16'} h-7 text-xs px-1`}
+                          type="number"
+                          className="w-16 h-7 text-xs px-1"
                           value={d.values[f.key] ?? ''}
                           onChange={e => updateField('f-chive', f.key, e.target.value)}
-                          placeholder={f.key === 'order' ? '봉지/g' : ''}
                         />
                       </label>
                     ))}
