@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { loadSettings, saveSettings, loadRecords, saveRecords } from '@/utils/storage';
 import { recordsToCsvRows, csvRowsToString, downloadCsv, parseCsvString, csvToRecords } from '@/utils/csv';
 import { computeAnalysis } from '@/utils/analysis';
+import { exportToExcel, exportAnalysisToExcel, exportToPdf, exportAnalysisToPdf } from '@/utils/exportFiles';
 import { AppSettings } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
