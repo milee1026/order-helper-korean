@@ -153,7 +153,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                 <td className="border px-2 py-1">
                   <div className="font-medium">파프리카</div>
                   <div className="text-muted-foreground" style={{ fontSize: '10px' }}>1/4 바트</div>
-                  <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 5kg ≈ 1/4 바트 3바트</div>
+                  <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 5kg = 1/4 바트 3바트</div>
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
