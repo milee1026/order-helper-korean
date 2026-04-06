@@ -205,14 +205,16 @@ const PKG_ITEMS: ItemConfig[] = PKG_DEFS.map(([id, name, unit, opts]) =>
 );
 
 // ─── OTHER SUPPLIES ───
-const OTHER_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: boolean; customFields?: ItemConfig['fields'] }?][] = [
+const OTHER_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: boolean; customFields?: ItemConfig['fields']; totalLabel?: string; computeTotal?: ItemConfig['computeTotal'] }?][] = [
   ['mo-pasta', '파스타면', '20봉지 1박스', {
+    totalLabel: '총재고(봉지)',
     customFields: [
       { key: 'openBags', label: '사용중 박스 남은 봉지 수', type: 'number' },
       { key: 'unused', label: '미사용 박스 수', type: 'number' },
-      { key: 'inbound', label: '입고분', type: 'number' },
+      { key: 'inbound', label: '입고분(박스)', type: 'number' },
       { key: 'order', label: '발주량', type: 'number' },
     ],
+    computeTotal: (v) => (Number(v.unused) || 0) * 20 + (Number(v.openBags) || 0) + (Number(v.inbound) || 0) * 20,
   }],
   ['mo-napkin', '냅킨', '500장 1봉지'],
   ['mo-spoon', '숟가락', '100개 1봉지'],
@@ -228,11 +230,11 @@ const OTHER_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: b
   ['mo-parsley', '파슬리', '1팩'],
   ['mo-furikake', '후리가케', '1팩'],
   ['mo-almond', '아몬드분태', '1팩'],
-  ['mo-agave', '아가베시럽', '2통 1묶음'],
+  ['mo-agave', '아가베시럽', '2통 1묶음', { totalLabel: '총재고(통)' }],
   ['mo-yogurt-spoon', '요거트스푼', '100개 1봉지'],
   ['mo-red-pepper', '크러쉬드 레드페퍼', '1통'],
   ['mo-olive-oil', '올리브유', '1통'],
-  ['mo-lid-sticker', '무타공리드 스티커', '1000개 1팩', { ratioOnly: true }],
+  ['mo-lid-sticker', '무타공리드 스티커', '1000개 1팩', { ratioOnly: true, totalLabel: '총재고(팩)' }],
 ];
 const OTHER_ITEMS: ItemConfig[] = OTHER_DEFS.map(([id, name, unit, opts]) =>
   ratioItem(id, name, '그 외 비품', unit, opts)
