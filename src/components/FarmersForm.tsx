@@ -195,36 +195,43 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
           {/* 쪽파 */}
           {(() => {
             const d = getItem('f-chive');
+            const portionedQt = Number(d.values.portioned) || 0;
+            const unportionedBags = Number(d.values.unportioned) || 0;
+            const inboundBags = Number(d.values.inbound) || 0;
+            const unportionedConverted = unportionedBags * 2;
+            const inboundConverted = inboundBags * 2;
+            const chiveTotal = portionedQt + unportionedConverted + inboundConverted;
             return (
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
                   <div className="font-medium">쪽파</div>
                   <div className="text-muted-foreground" style={{ fontSize: '10px' }}>1/4 바트</div>
-                  <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 900g 1봉지 = 1/4 바트 2바트</div>
+                  <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 900g 1봉지 = 1/4 바트 2개</div>
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     {[
-                      { key: 'portioned', label: '소분(1/4 바트)', type: 'number' as const },
-                      { key: 'unportioned', label: '미소분', type: 'number' as const },
-                      { key: 'inbound', label: '입고분', type: 'text' as const },
-                      { key: 'order', label: '발주량', type: 'text' as const },
+                      { key: 'portioned', label: '소분(1/4 바트)' },
+                      { key: 'unportioned', label: '미소분(봉지)' },
+                      { key: 'inbound', label: '입고분(봉지)' },
+                      { key: 'order', label: '발주량(봉지/g)' },
                     ].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                         <Input
-                          type={f.type === 'text' ? 'text' : 'number'}
-                          className={`${f.type === 'text' ? 'w-20' : 'w-16'} h-7 text-xs px-1`}
+                          type={f.key === 'order' ? 'text' : 'number'}
+                          className={`${f.key === 'order' ? 'w-20' : 'w-16'} h-7 text-xs px-1`}
                           value={d.values[f.key] ?? ''}
                           onChange={e => updateField('f-chive', f.key, e.target.value)}
-                          placeholder={f.type === 'text' ? '봉지/g' : ''}
+                          placeholder={f.key === 'order' ? '봉지/g' : ''}
                         />
                       </label>
                     ))}
                   </div>
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
-                  총재고: {((Number(d.values.portioned) || 0) + (Number(d.values.unportioned) || 0)) || '-'}
+                  <div>총재고(1/4 바트):</div>
+                  <div>{chiveTotal || '-'}</div>
                 </td>
                 <td className="border px-1 py-1">
                   <Input className="h-7 text-xs px-1" placeholder="메모" value={d.memo} onChange={e => updateMemo('f-chive', e.target.value)} />
