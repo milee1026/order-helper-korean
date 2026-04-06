@@ -42,7 +42,7 @@ export function csvRowsToString(rows: CsvRow[]): string {
     headers.join(','),
     ...rows.map(row =>
       headers.map(h => {
-        const val = String((row as Record<string, string>)[h] ?? '');
+        const val = String((row as unknown as Record<string, string>)[h] ?? '');
         return val.includes(',') || val.includes('"') || val.includes('\n')
           ? `"${val.replace(/"/g, '""')}"` : val;
       }).join(',')
