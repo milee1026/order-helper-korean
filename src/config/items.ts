@@ -149,14 +149,27 @@ const sauceNames: [string, string, string][] = [
   ['ms-rose', '로제소스', '10팩 1박스'],
   ['ms-curry', '커리소스', '10팩 1박스'],
 ];
-const SAUCE_ITEMS: ItemConfig[] = sauceNames.map(([id, name, unit]) =>
-  ratioItem(id, name, '소스류', unit, { totalLabel: '총재고(팩)' })
-);
+const SAUCE_INBOUND_MULTIPLIER: Record<string, number> = {
+  'ms-salpa': 10, 'ms-rose': 10, 'ms-curry': 10,
+};
+const SAUCE_ITEMS: ItemConfig[] = sauceNames.map(([id, name, unit]) => {
+  const mult = SAUCE_INBOUND_MULTIPLIER[id];
+  if (mult) {
+    return ratioItem(id, name, '소스류', unit, {
+      totalLabel: '총재고(팩)',
+      computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * mult,
+    });
+  }
+  return ratioItem(id, name, '소스류', unit, { totalLabel: '총재고(팩)' });
+});
 
 // ─── OTHER REFRIGERATED ───
 const REFRIG_ITEMS: ItemConfig[] = [
   ratioItem('mr-parmesan', '파마산', '그 외 냉장제품', '팩', { usedLabel: '사용중 비율', unusedLabel: '미사용팩', totalLabel: '총재고(팩)' }),
-  ratioItem('mr-yogurt', '요거트', '그 외 냉장제품', '2통 1박스', { usedLabel: '사용중 비율', unusedLabel: '미사용통', totalLabel: '총재고(통)' }),
+  ratioItem('mr-yogurt', '요거트', '그 외 냉장제품', '2통 1박스', {
+    usedLabel: '사용중 비율', unusedLabel: '미사용통', totalLabel: '총재고(통)',
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 2,
+  }),
   {
     id: 'mr-myeongyi', name: '명이나물', category: '그 외 냉장제품', vendor: 'marketbom', unitDesc: '10kg 1통',
     fields: [
@@ -173,13 +186,22 @@ const REFRIG_ITEMS: ItemConfig[] = [
 
 // ─── FROZEN ───
 const FROZEN_ITEMS: ItemConfig[] = [
-  ratioItem('mf-sweetpotato', '고구마', '냉동제품', '2팩 1박스', { totalLabel: '총재고(팩)' }),
-  ratioItem('mf-pumpkin', '단호박', '냉동제품', '5팩 1박스', { totalLabel: '총재고(팩)' }),
-  ratioItem('mf-greenbean', '그린빈', '냉동제품', '10팩 1박스', { totalLabel: '총재고(팩)' }),
+  ratioItem('mf-sweetpotato', '고구마', '냉동제품', '2팩 1박스', {
+    totalLabel: '총재고(팩)',
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 2,
+  }),
+  ratioItem('mf-pumpkin', '단호박', '냉동제품', '5팩 1박스', {
+    totalLabel: '총재고(팩)',
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 5,
+  }),
+  ratioItem('mf-greenbean', '그린빈', '냉동제품', '10팩 1박스', {
+    totalLabel: '총재고(팩)',
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 10,
+  }),
 ];
 
 // ─── PACKAGING ───
-const PKG_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: boolean }?][] = [
+const PKG_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: boolean; totalLabel?: string; computeTotal?: ItemConfig['computeTotal'] }?][] = [
   ['mp-16oz-pulp', '16온스 펄프용기', '75개 4팩 1박스'],
   ['mp-24oz-pulp', '24온스 펄프용기', '75개 4팩 1박스'],
   ['mp-32oz-pulp', '32온스 펄프용기', '75개 1팩'],
@@ -194,7 +216,10 @@ const PKG_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: boo
   ['mp-13oz-paper', '13온스 종이컵(핫 음료용)', '100개 1줄'],
   ['mp-hole-lid', '타공리드', '100개 1줄'],
   ['mp-nohole-lid', '무타공리드', '100개 1줄'],
-  ['mp-square-lid', '사각리드', '50개 6봉지 1박스'],
+  ['mp-square-lid', '사각리드', '50개 6봉지 1박스', {
+    totalLabel: '총재고(봉지)',
+    computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 6,
+  }],
   ['mp-bag-s', '포장봉투(소)', '200장 1봉지', { unusedOnly: true }],
   ['mp-band', '띠지', '2500장 1박스', { ratioOnly: true }],
   ['mp-drink-bag-1', '1구짜리 음료 봉투', '200개 1봉지', { unusedOnly: true }],
@@ -230,7 +255,10 @@ const OTHER_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: b
   ['mo-parsley', '파슬리', '1팩'],
   ['mo-furikake', '후리가케', '1팩'],
   ['mo-almond', '아몬드분태', '1팩'],
-  ['mo-agave', '아가베시럽', '2통 1묶음', { totalLabel: '총재고(통)' }],
+  ['mo-agave', '아가베시럽', '2통 1묶음', {
+    totalLabel: '총재고(통)',
+    computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 2,
+  }],
   ['mo-yogurt-spoon', '요거트스푼', '100개 1봉지'],
   ['mo-red-pepper', '크러쉬드 레드페퍼', '1통'],
   ['mo-olive-oil', '올리브유', '1통'],
