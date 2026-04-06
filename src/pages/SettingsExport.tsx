@@ -115,22 +115,10 @@ export function SettingsExport() {
       </CollapsibleSection>
 
       <CollapsibleSection title="데이터 내보내기 / 가져오기">
-        <div className="space-y-3">
-          <div>
-            <p className="text-xs font-medium mb-1">전체 데이터 내보내기</p>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={handleExportAllCsv}>CSV</Button>
-              <Button size="sm" variant="outline" onClick={handleExportAllExcel}>Excel (.xlsx)</Button>
-              <Button size="sm" variant="outline" onClick={handleExportAllPdf}>PDF</Button>
-            </div>
-          </div>
-          <div>
-            <p className="text-xs font-medium mb-1">분석 요약 내보내기</p>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={handleExportAnalysisCsv}>CSV</Button>
-              <Button size="sm" variant="outline" onClick={handleExportAnalysisExcel}>Excel (.xlsx)</Button>
-              <Button size="sm" variant="outline" onClick={handleExportAnalysisPdf}>PDF</Button>
-            </div>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleExportAllCsv}>전체 데이터 CSV 다운로드</Button>
+            <Button size="sm" variant="outline" onClick={handleExportAnalysisCsv}>분석 요약 CSV 다운로드</Button>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">CSV 가져오기:</span>
