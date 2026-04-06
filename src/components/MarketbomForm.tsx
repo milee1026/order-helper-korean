@@ -49,7 +49,7 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                className="h-6 px-3 text-xs bg-blue-500 text-white hover:bg-blue-600 rounded"
                 onClick={(e) => { e.stopPropagation(); resetCategory(cat); }}
               >
                 초기화
