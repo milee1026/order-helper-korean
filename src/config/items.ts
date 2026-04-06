@@ -216,7 +216,10 @@ const PKG_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: boo
   ['mp-13oz-paper', '13온스 종이컵(핫 음료용)', '100개 1줄'],
   ['mp-hole-lid', '타공리드', '100개 1줄'],
   ['mp-nohole-lid', '무타공리드', '100개 1줄'],
-  ['mp-square-lid', '사각리드', '50개 6봉지 1박스'],
+  ['mp-square-lid', '사각리드', '50개 6봉지 1박스', {
+    totalLabel: '총재고(봉지)',
+    computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 6,
+  }],
   ['mp-bag-s', '포장봉투(소)', '200장 1봉지', { unusedOnly: true }],
   ['mp-band', '띠지', '2500장 1박스', { ratioOnly: true }],
   ['mp-drink-bag-1', '1구짜리 음료 봉투', '200개 1봉지', { unusedOnly: true }],
