@@ -62,6 +62,7 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
                               field={f}
                               value={d.values[f.key]}
                               onChange={(val) => updateField(item.id, f.key, val)}
+                              unitDesc={item.unitDesc}
                             />
                           ))}
                         </div>
