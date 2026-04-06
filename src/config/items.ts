@@ -201,7 +201,7 @@ const FROZEN_ITEMS: ItemConfig[] = [
 ];
 
 // ─── PACKAGING ───
-const PKG_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: boolean }?][] = [
+const PKG_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: boolean; totalLabel?: string; computeTotal?: ItemConfig['computeTotal'] }?][] = [
   ['mp-16oz-pulp', '16온스 펄프용기', '75개 4팩 1박스'],
   ['mp-24oz-pulp', '24온스 펄프용기', '75개 4팩 1박스'],
   ['mp-32oz-pulp', '32온스 펄프용기', '75개 1팩'],
