@@ -50,7 +50,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'orderBags', label: '발주량(봉지)', type: 'number' },
     ],
     totalLabel: '총재고(1/4 바트)',
-    computeTotal: (v) => (Number(v.unusedPortioned) || 0) + (Number(v.usedRatio) || 0) + (Number(v.unportionedBags) || 0) * 2 + (Number(v.inbound) || 0) * 2,
+    computeTotal: (v) => (Number(v.unusedPortioned) || 0) + (Number(v.usedRatio) || 0) + (Number(v.unportionedBags) || 0) * 2,
   },
 ];
 
