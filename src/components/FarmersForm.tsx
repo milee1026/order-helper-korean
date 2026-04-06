@@ -220,11 +220,11 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                         <Input
-                          type={f.key === 'order' ? 'text' : 'number'}
-                          className={`${f.key === 'order' ? 'w-20' : 'w-16'} h-7 text-xs px-1`}
+                          type="number"
+                          className="w-16 h-7 text-xs px-1"
                           value={d.values[f.key] ?? ''}
                           onChange={e => updateField('f-chive', f.key, e.target.value)}
-                          placeholder={f.key === 'order' ? '봉지/g' : ''}
+                        />
                         />
                       </label>
                     ))}
