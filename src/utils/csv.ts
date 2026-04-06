@@ -126,6 +126,5 @@ export function csvToRecords(csvRows: Record<string, string>[]): DailyRecord[] {
 }
 
 function findItemIdByName(name: string): string | undefined {
-  const { ALL_ITEMS } = require('@/config/items');
-  return ALL_ITEMS.find((i: { name: string }) => i.name === name)?.id;
+  return ALL_ITEMS.find((i) => i.name === name)?.id;
 }
