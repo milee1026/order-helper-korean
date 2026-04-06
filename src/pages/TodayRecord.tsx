@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { DailyRecord, ItemData, Vendor, RecorderType } from '@/types';
 import { getItemsByVendor, FARMERS_ITEMS } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
-import { addRecord, getRecordsByDate, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
+import { addRecord, getRecordsByDate, deleteRecord, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
 import { FarmersForm } from '@/components/FarmersForm';
 import { MarketbomForm } from '@/components/MarketbomForm';
 import { Button } from '@/components/ui/button';
@@ -93,11 +93,22 @@ export function TodayRecord() {
   const handleDuplicate = () => {
     const newDate = prompt('복사할 날짜를 입력하세요 (YYYY-MM-DD):', today);
     if (!newDate) return;
+
+    // Check if a record already exists for the target date + vendor
+    const existingRecord = getRecordsByDate(newDate).find(r => r.vendor === vendor);
+    if (existingRecord) {
+      const overwrite = confirm(`${newDate}에 이미 ${vendor === 'farmers' ? '파머스' : '마켓봄'} 기록이 있습니다.\n기존 기록을 새 기록으로 덮어쓰시겠습니까?`);
+      if (!overwrite) return;
+      // Delete the existing record so the new one replaces it
+      deleteRecord(existingRecord.id);
+    }
+
     const items = getItemsByVendor(vendor);
     const recordItems: ItemData[] = items.map(cfg => {
       const d = itemData[cfg.id];
       if (!d) return { itemId: cfg.id, values: {}, inbound: '', order: '', memo: '' };
-      return { ...d };
+      const total = cfg.computeTotal ? cfg.computeTotal(d.values as Record<string, number>, settings) : undefined;
+      return { ...d, totalStock: total };
     });
     const newDay = getDayOfWeek(newDate);
     const record: DailyRecord = {

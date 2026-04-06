@@ -12,7 +12,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
     totalLabel: '총재고(락)',
-    computeTotal: (v) => (Number(v.unusedPortioned) || 0) + (Number(v.usedRatio) || 0) + (Number(v.unportioned) || 0) + (Number(v.inbound) || 0),
+    computeTotal: (v) => (Number(v.unusedPortioned) || 0) + (Number(v.usedRatio) || 0) + (Number(v.unportioned) || 0),
   },
   {
     id: 'f-broccoli', name: '브로콜리', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (4송이=1통)',
@@ -38,7 +38,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
     totalLabel: '총재고(1/4 바트)',
-    computeTotal: (v) => (Number(v.unusedPrepped) || 0) + (Number(v.usedRatio) || 0) + (Number(v.untrimmedKg) || 0) / 5 * 3 + (Number(v.inbound) || 0) / 5 * 3,
+    computeTotal: (v) => (Number(v.unusedPrepped) || 0) + (Number(v.usedRatio) || 0) + (Number(v.untrimmedKg) || 0) / 5 * 3,
   },
   {
     id: 'f-chive', name: '쪽파', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (1봉지≈900g=2개)',
@@ -50,7 +50,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'orderBags', label: '발주량(봉지)', type: 'number' },
     ],
     totalLabel: '총재고(1/4 바트)',
-    computeTotal: (v) => (Number(v.unusedPortioned) || 0) + (Number(v.usedRatio) || 0) + (Number(v.unportionedBags) || 0) * 2 + (Number(v.inbound) || 0) * 2,
+    computeTotal: (v) => (Number(v.unusedPortioned) || 0) + (Number(v.usedRatio) || 0) + (Number(v.unportionedBags) || 0) * 2,
   },
 ];
 
