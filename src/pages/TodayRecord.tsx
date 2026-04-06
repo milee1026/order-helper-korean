@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { DailyRecord, ItemData, Vendor, RecorderType } from '@/types';
 import { getItemsByVendor, FARMERS_ITEMS } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
-import { addRecord, getRecordsByDate, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
+import { addRecord, getRecordsByDate, deleteRecord, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
 import { FarmersForm } from '@/components/FarmersForm';
 import { MarketbomForm } from '@/components/MarketbomForm';
 import { Button } from '@/components/ui/button';
