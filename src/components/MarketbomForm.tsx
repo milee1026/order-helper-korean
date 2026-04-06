@@ -152,10 +152,10 @@ function MobileFieldInput({ field, value, onChange }: {
 }) {
   if (field.type === 'ratio') {
     return (
-      <label className="flex items-center justify-between gap-2 text-xs">
+      <div className="flex items-center justify-between gap-2 text-xs">
         <span className="text-muted-foreground">{field.label}</span>
         <RatioSelector value={Number(value) || 0} onChange={onChange} />
-      </label>
+      </div>
     );
   }
   return (

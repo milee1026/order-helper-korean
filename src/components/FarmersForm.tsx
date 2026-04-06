@@ -177,10 +177,10 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                         <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={sd.values[f.key] ?? ''} onChange={e => updateField('f-salad', f.key, e.target.value)} />
                       </label>
                     ))}
-                    <label className="flex items-center gap-1 text-xs">
+                    <div className="flex items-center gap-1 text-xs">
                       <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                       <RatioSelector value={sdRatio} onChange={v => updateField('f-salad', 'usedRatio', v)} />
-                    </label>
+                    </div>
                     {[{ key: 'unportioned', label: '미소분(락)' }, { key: 'inbound', label: '입고분(락)' }, { key: 'orderKg', label: '발주량(kg)' }].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
