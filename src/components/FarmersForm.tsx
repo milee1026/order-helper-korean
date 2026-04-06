@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { ItemConfig, ItemData } from '@/types';
-import { FARMERS_ITEMS } from '@/config/items';
+import { ItemData } from '@/types';
 import { Input } from '@/components/ui/input';
+import { RatioSelector } from '@/components/RatioSelector';
 import { loadRecords } from '@/utils/storage';
 
 interface FarmersFormProps {
@@ -30,6 +30,8 @@ function useBroccoliAvgPerKg(): number | null {
   }, []);
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 export function FarmersForm({ data, onChange }: FarmersFormProps) {
   const getItem = (id: string): ItemData => data[id] || { itemId: id, values: {}, inbound: '', order: '', memo: '' };
 
@@ -37,7 +39,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
     const current = getItem(itemId);
     const updated = { ...current, values: { ...current.values, [key]: val } };
     if (key === 'inbound') updated.inbound = val;
-    if (key === 'order' || key === 'orderKg') updated.order = val;
+    if (key === 'order' || key === 'orderKg' || key === 'orderBags') updated.order = val;
     onChange(itemId, updated);
   };
 
@@ -48,14 +50,44 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
 
   const broccoliAvg = useBroccoliAvgPerKg();
 
-  // Compute auto values
-  const saladData = getItem('f-salad');
-  const saladOrderKg = Number(saladData.values.orderKg) || 0;
-  const saladOrderRack = saladOrderKg > 0 ? saladOrderKg / 2 : null;
-  const saladTotal = Number(saladData.values.morningStock) || 0;
+  // ── 샐야 ──
+  const sd = getItem('f-salad');
+  const sdUnused = Number(sd.values.unusedPortioned) || 0;
+  const sdRatio = Number(sd.values.usedRatio) || 0;
+  const sdUnport = Number(sd.values.unportioned) || 0;
+  const sdInbound = Number(sd.values.inbound) || 0;
+  const sdTotal = sdUnused + sdRatio + sdUnport + sdInbound;
+  const sdOrderKg = Number(sd.values.orderKg) || 0;
+  const sdOrderRack = sdOrderKg > 0 ? sdOrderKg / 2 : null;
 
-  const brocData = getItem('f-broccoli');
-  const brocTotal = (Number(brocData.values.blanched) || 0) + (Number(brocData.values.trimmed) || 0) + (Number(brocData.values.untrimmed) || 0) / 4;
+  // ── 브로콜리 ──
+  const bd = getItem('f-broccoli');
+  const bdUnused = Number(bd.values.unusedBlanched) || 0;
+  const bdRatio = Number(bd.values.usedBlanchedRatio) || 0;
+  const bdPrepped = Number(bd.values.prepped) || 0;
+  const bdUntrimmed = Number(bd.values.untrimmed) || 0;
+  const bdUntrimmedConv = bdUntrimmed / 4;
+  const bdTotal = bdUnused + bdRatio + bdPrepped + bdUntrimmedConv;
+
+  // ── 파프리카 ──
+  const pd = getItem('f-paprika');
+  const pdUnused = Number(pd.values.unusedPrepped) || 0;
+  const pdRatio = Number(pd.values.usedRatio) || 0;
+  const pdUntrimmedKg = Number(pd.values.untrimmedKg) || 0;
+  const pdInboundKg = Number(pd.values.inbound) || 0;
+  const pdUntrimmedConv = pdUntrimmedKg / 5 * 3;
+  const pdInboundConv = pdInboundKg / 5 * 3;
+  const pdTotal = pdUnused + pdRatio + pdUntrimmedConv + pdInboundConv;
+
+  // ── 쪽파 ──
+  const cd = getItem('f-chive');
+  const cdUnused = Number(cd.values.unusedPortioned) || 0;
+  const cdRatio = Number(cd.values.usedRatio) || 0;
+  const cdUnportBags = Number(cd.values.unportionedBags) || 0;
+  const cdInboundBags = Number(cd.values.inbound) || 0;
+  const cdUnportConv = cdUnportBags * 2;
+  const cdInboundConv = cdInboundBags * 2;
+  const cdTotal = cdUnused + cdRatio + cdUnportConv + cdInboundConv;
 
   return (
     <div className="overflow-x-auto">
@@ -73,12 +105,13 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
           <tr className="hover:bg-accent/50">
             <td className="border px-2 py-1">
               <div className="font-medium">샐야</div>
-              <div className="text-muted-foreground" style={{ fontSize: '10px' }}>2kg = 1락</div>
+              <div className="text-muted-foreground" style={{ fontSize: '10px' }}>2kg=1봉지=1락</div>
             </td>
             <td className="border px-1 py-1">
               <div className="flex flex-wrap gap-x-3 gap-y-1">
                 {[
-                  { key: 'morningStock', label: '아침 재고(락)' },
+                  { key: 'unusedPortioned', label: '미사용(락)' },
+                  { key: 'unportioned', label: '미소분(락)' },
                   { key: 'inbound', label: '입고분(락)' },
                   { key: 'orderKg', label: '발주량(kg)' },
                 ].map(f => (
@@ -87,21 +120,26 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                     <Input
                       type="number"
                       className="w-16 h-7 text-xs px-1"
-                      value={saladData.values[f.key] ?? ''}
+                      value={sd.values[f.key] ?? ''}
                       onChange={e => updateField('f-salad', f.key, e.target.value)}
                     />
                   </label>
                 ))}
-                {saladOrderRack !== null && (
-                  <span className="text-xs text-blue-600 font-medium self-center">= {saladOrderRack}락</span>
+                <label className="flex items-center gap-1 text-xs">
+                  <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
+                  <RatioSelector value={sdRatio} onChange={v => updateField('f-salad', 'usedRatio', v)} />
+                </label>
+                {sdOrderRack !== null && (
+                  <span className="text-xs text-blue-600 font-medium self-center">= {sdOrderRack}락</span>
                 )}
               </div>
             </td>
             <td className="border px-2 py-1 text-center font-mono text-xs">
-              총재고: {saladTotal || '-'}락
+              <div>총재고(락):</div>
+              <div>{sdTotal ? round2(sdTotal) : '-'}</div>
             </td>
             <td className="border px-1 py-1">
-              <Input className="h-7 text-xs px-1" placeholder="메모" value={saladData.memo} onChange={e => updateMemo('f-salad', e.target.value)} />
+              <Input className="h-7 text-xs px-1" placeholder="메모" value={sd.memo} onChange={e => updateMemo('f-salad', e.target.value)} />
             </td>
           </tr>
 
@@ -109,7 +147,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
           <tr className="hover:bg-accent/50">
             <td className="border px-2 py-1">
               <div className="font-medium">브로콜리</div>
-              <div className="text-muted-foreground" style={{ fontSize: '10px' }}>1/4 바트 1통 = 4송이</div>
+              <div className="text-muted-foreground" style={{ fontSize: '10px' }}>4송이 = 1/4 바트 1통</div>
               <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 4kg, 8kg 단위 발주</div>
               {broccoliAvg !== null && (
                 <div className="text-blue-600" style={{ fontSize: '10px' }}>참고: 1kg ≈ {broccoliAvg}송이</div>
@@ -118,8 +156,8 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
             <td className="border px-1 py-1">
               <div className="flex flex-wrap gap-x-3 gap-y-1">
                 {[
-                  { key: 'blanched', label: '데친(1/4 바트)' },
-                  { key: 'trimmed', label: '손질(1/4 바트)' },
+                  { key: 'unusedBlanched', label: '미사용 데침(1/4 바트)' },
+                  { key: 'prepped', label: '손질(1/4 바트)' },
                   { key: 'untrimmed', label: '미손질(송이)' },
                   { key: 'inboundKg', label: '입고분(kg)' },
                   { key: 'inboundCount', label: '입고분(송이)' },
@@ -130,29 +168,29 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                     <Input
                       type="number"
                       className="w-16 h-7 text-xs px-1"
-                      value={brocData.values[f.key] ?? ''}
+                      value={bd.values[f.key] ?? ''}
                       onChange={e => updateField('f-broccoli', f.key, e.target.value)}
                     />
                   </label>
                 ))}
+                <label className="flex items-center gap-1 text-xs">
+                  <span className="text-muted-foreground whitespace-nowrap">사용 데침 비율</span>
+                  <RatioSelector value={bdRatio} onChange={v => updateField('f-broccoli', 'usedBlanchedRatio', v)} />
+                </label>
               </div>
             </td>
             <td className="border px-2 py-1 text-center font-mono text-xs">
-              <div>환산: {(Number(brocData.values.untrimmed) || 0) / 4 || '-'}</div>
-              <div>총가용: {brocTotal ? (Math.round(brocTotal * 100) / 100) : '-'}</div>
+              {bdUntrimmed > 0 && <div>미손질→{round2(bdUntrimmedConv)}</div>}
+              <div>총재고(1/4 바트):</div>
+              <div>{bdTotal ? round2(bdTotal) : '-'}</div>
             </td>
             <td className="border px-1 py-1">
-              <Input className="h-7 text-xs px-1" placeholder="메모" value={brocData.memo} onChange={e => updateMemo('f-broccoli', e.target.value)} />
+              <Input className="h-7 text-xs px-1" placeholder="메모" value={bd.memo} onChange={e => updateMemo('f-broccoli', e.target.value)} />
             </td>
           </tr>
 
           {/* 파프리카 */}
           {(() => {
-            const d = getItem('f-paprika');
-            const preppedQt = Number(d.values.trimmed) || 0;
-            const unpreppedKg = Number(d.values.untrimmed) || 0;
-            const unpreppedConverted = unpreppedKg / 5 * 3;
-            const paprikaTotal = preppedQt + unpreppedConverted;
             return (
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
@@ -163,8 +201,8 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     {[
-                      { key: 'trimmed', label: '손질(1/4 바트)' },
-                      { key: 'untrimmed', label: '미손질(kg)' },
+                      { key: 'unusedPrepped', label: '미사용 손질(1/4 바트)' },
+                      { key: 'untrimmedKg', label: '미손질(kg)' },
                       { key: 'inbound', label: '입고분(kg)' },
                       { key: 'orderKg', label: '발주량(kg)' },
                     ].map(f => (
@@ -173,19 +211,25 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                         <Input
                           type="number"
                           className="w-16 h-7 text-xs px-1"
-                          value={d.values[f.key] ?? ''}
+                          value={pd.values[f.key] ?? ''}
                           onChange={e => updateField('f-paprika', f.key, e.target.value)}
                         />
                       </label>
                     ))}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">사용 손질 비율</span>
+                      <RatioSelector value={pdRatio} onChange={v => updateField('f-paprika', 'usedRatio', v)} />
+                    </label>
                   </div>
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
+                  {pdUntrimmedKg > 0 && <div>미손질→{round2(pdUntrimmedConv)}</div>}
+                  {pdInboundKg > 0 && <div>입고→{round2(pdInboundConv)}</div>}
                   <div>총재고(1/4 바트):</div>
-                  <div>{paprikaTotal || '-'}</div>
+                  <div>{pdTotal ? round2(pdTotal) : '-'}</div>
                 </td>
                 <td className="border px-1 py-1">
-                  <Input className="h-7 text-xs px-1" placeholder="메모" value={d.memo} onChange={e => updateMemo('f-paprika', e.target.value)} />
+                  <Input className="h-7 text-xs px-1" placeholder="메모" value={pd.memo} onChange={e => updateMemo('f-paprika', e.target.value)} />
                 </td>
               </tr>
             );
@@ -193,44 +237,45 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
 
           {/* 쪽파 */}
           {(() => {
-            const d = getItem('f-chive');
-            const portionedQt = Number(d.values.portioned) || 0;
-            const unportionedBags = Number(d.values.unportioned) || 0;
-            const unportionedConverted = unportionedBags * 2;
-            const chiveTotal = portionedQt + unportionedConverted;
             return (
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
                   <div className="font-medium">쪽파</div>
                   <div className="text-muted-foreground" style={{ fontSize: '10px' }}>1/4 바트</div>
-                  <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 900g 1봉지 = 1/4 바트 2개</div>
+                  <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 1봉지(≈900g) = 1/4 바트 2개</div>
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     {[
-                      { key: 'portioned', label: '소분(1/4 바트)' },
-                      { key: 'unportioned', label: '미소분(봉지)' },
+                      { key: 'unusedPortioned', label: '미사용 소분(1/4 바트)' },
+                      { key: 'unportionedBags', label: '미소분(봉지)' },
                       { key: 'inbound', label: '입고분(봉지)' },
-                      { key: 'order', label: '발주량(봉지)' },
+                      { key: 'orderBags', label: '발주량(봉지)' },
                     ].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
                         <Input
                           type="number"
                           className="w-16 h-7 text-xs px-1"
-                          value={d.values[f.key] ?? ''}
+                          value={cd.values[f.key] ?? ''}
                           onChange={e => updateField('f-chive', f.key, e.target.value)}
                         />
                       </label>
                     ))}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">사용 소분 비율</span>
+                      <RatioSelector value={cdRatio} onChange={v => updateField('f-chive', 'usedRatio', v)} />
+                    </label>
                   </div>
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
+                  {cdUnportBags > 0 && <div>미소분→{round2(cdUnportConv)}</div>}
+                  {cdInboundBags > 0 && <div>입고→{round2(cdInboundConv)}</div>}
                   <div>총재고(1/4 바트):</div>
-                  <div>{chiveTotal || '-'}</div>
+                  <div>{cdTotal ? round2(cdTotal) : '-'}</div>
                 </td>
                 <td className="border px-1 py-1">
-                  <Input className="h-7 text-xs px-1" placeholder="메모" value={d.memo} onChange={e => updateMemo('f-chive', e.target.value)} />
+                  <Input className="h-7 text-xs px-1" placeholder="메모" value={cd.memo} onChange={e => updateMemo('f-chive', e.target.value)} />
                 </td>
               </tr>
             );
