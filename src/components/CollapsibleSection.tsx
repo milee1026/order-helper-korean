@@ -7,20 +7,24 @@ interface CollapsibleSectionProps {
   defaultOpen?: boolean;
   children: React.ReactNode;
   className?: string;
+  headerRight?: React.ReactNode;
 }
 
-export function CollapsibleSection({ title, defaultOpen = true, children, className }: CollapsibleSectionProps) {
+export function CollapsibleSection({ title, defaultOpen = true, children, className, headerRight }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className={cn('border rounded mb-2', className)}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-muted hover:bg-accent transition-colors text-left"
-      >
-        {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        {title}
-      </button>
+      <div className="flex items-center bg-muted hover:bg-accent transition-colors">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="flex-1 flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-left"
+        >
+          {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          {title}
+        </button>
+        {headerRight && <div className="px-2">{headerRight}</div>}
+      </div>
       {open && <div className="p-2">{children}</div>}
     </div>
   );
