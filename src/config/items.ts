@@ -239,7 +239,7 @@ const OTHER_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: b
       { key: 'inbound', label: '입고분(박스)', type: 'number' },
       { key: 'order', label: '발주량', type: 'number' },
     ],
-    computeTotal: (v) => (Number(v.unused) || 0) * 20 + (Number(v.openBags) || 0) + (Number(v.inbound) || 0) * 20,
+    computeTotal: (v) => (Number(v.unused) || 0) * 20 + (Number(v.openBags) || 0),
   }],
   ['mo-napkin', '냅킨', '500장 1봉지'],
   ['mo-spoon', '숟가락', '100개 1봉지'],
