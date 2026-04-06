@@ -32,7 +32,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
     totalLabel: '총재고(1/4 바트)',
-    computeTotal: (v) => (Number(v.trimmed) || 0) + (Number(v.untrimmed) || 0) * 3 + (Number(v.inbound) || 0) * 3,
+    computeTotal: (v) => (Number(v.trimmed) || 0) + (Number(v.untrimmed) || 0) / 5 * 3 + (Number(v.inbound) || 0) / 5 * 3,
   },
   {
     id: 'f-chive', name: '쪽파', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (900g 1봉지=2바트)',
