@@ -77,12 +77,12 @@ function ratioItem(id: string, name: string, cat: string, unitDesc: string, opts
 
   const defaultCompute: ItemConfig['computeTotal'] = (v) => {
     if (opts?.ratioOnly) {
-      return (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0);
+      return (Number(v.usedRatio) || 0);
     }
     if (opts?.unusedOnly) {
-      return (Number(v.unused) || 0) + (Number(v.inbound) || 0);
+      return (Number(v.unused) || 0);
     }
-    return (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0);
+    return (Number(v.unused) || 0) + (Number(v.usedRatio) || 0);
   };
 
   return {
