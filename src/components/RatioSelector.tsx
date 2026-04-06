@@ -11,16 +11,17 @@ interface RatioSelectorProps {
 
 export function RatioSelector({ value, onChange, className }: RatioSelectorProps) {
   return (
-    <div className={cn('flex gap-1', className)}>
+    <div className={cn('inline-flex gap-0', className)} onClick={e => e.stopPropagation()}>
       {RATIOS.map(r => (
         <button
           key={r}
           type="button"
-          onClick={() => onChange(r)}
+          onClick={(e) => { e.stopPropagation(); onChange(r); }}
           className={cn(
-            'px-2 py-0.5 text-xs rounded border transition-colors',
+            'px-2.5 py-1 text-xs border transition-colors touch-manipulation',
+            'first:rounded-l last:rounded-r border-r-0 last:border-r',
             value === r
-              ? 'bg-primary text-primary-foreground border-primary'
+              ? 'bg-primary text-primary-foreground border-primary z-10 relative'
               : 'bg-background text-foreground border-input hover:bg-accent'
           )}
         >
