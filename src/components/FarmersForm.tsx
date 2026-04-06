@@ -214,10 +214,10 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                         <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={bd.values[f.key] ?? ''} onChange={e => updateField('f-broccoli', f.key, e.target.value)} />
                       </label>
                     ))}
-                    <label className="flex items-center gap-1 text-xs">
+                    <div className="flex items-center gap-1 text-xs">
                       <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                       <RatioSelector value={bdRatio} onChange={v => updateField('f-broccoli', 'usedBlanchedRatio', v)} />
-                    </label>
+                    </div>
                     {[{ key: 'prepped', label: '손질(1/4 바트)' }, { key: 'untrimmed', label: '미손질(송이)' }, { key: 'inboundKg', label: '입고분(kg)' }, { key: 'inboundCount', label: '입고분(송이)' }, { key: 'orderKg', label: '발주량(kg)' }].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
