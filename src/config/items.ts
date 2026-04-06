@@ -166,7 +166,10 @@ const SAUCE_ITEMS: ItemConfig[] = sauceNames.map(([id, name, unit]) => {
 // ─── OTHER REFRIGERATED ───
 const REFRIG_ITEMS: ItemConfig[] = [
   ratioItem('mr-parmesan', '파마산', '그 외 냉장제품', '팩', { usedLabel: '사용중 비율', unusedLabel: '미사용팩', totalLabel: '총재고(팩)' }),
-  ratioItem('mr-yogurt', '요거트', '그 외 냉장제품', '2통 1박스', { usedLabel: '사용중 비율', unusedLabel: '미사용통', totalLabel: '총재고(통)' }),
+  ratioItem('mr-yogurt', '요거트', '그 외 냉장제품', '2통 1박스', {
+    usedLabel: '사용중 비율', unusedLabel: '미사용통', totalLabel: '총재고(통)',
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 2,
+  }),
   {
     id: 'mr-myeongyi', name: '명이나물', category: '그 외 냉장제품', vendor: 'marketbom', unitDesc: '10kg 1통',
     fields: [
