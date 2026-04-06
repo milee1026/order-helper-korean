@@ -111,6 +111,14 @@ function FieldInput({ field, value, onChange }: {
         value={value ?? ''}
         onChange={e => onChange(field.type === 'number' ? e.target.value : e.target.value)}
       />
+      {showUnit && <span className="text-muted-foreground whitespace-nowrap" style={{ fontSize: '10px' }}>{primaryUnit}</span>}
     </label>
   );
+}
+
+function extractPrimaryUnit(unitDesc: string): string {
+  // e.g. "75개 4팩 1박스" → "박스", "1팩" → "팩", "락" → "락"
+  const parts = unitDesc.trim().split(/\s+/);
+  const last = parts[parts.length - 1];
+  return last.replace(/^\d+/, '');
 }
