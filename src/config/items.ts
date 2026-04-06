@@ -9,7 +9,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'inbound', label: '입고분(락)', type: 'number' },
       { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
-    computeTotal: (v) => (Number(v.morningStock) || 0) + (Number(v.inbound) || 0),
+    computeTotal: (v) => (Number(v.morningStock) || 0),
   },
   {
     id: 'f-broccoli', name: '브로콜리', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (1통=4송이)',
@@ -32,7 +32,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
     totalLabel: '총재고(1/4 바트)',
-    computeTotal: (v) => (Number(v.trimmed) || 0) + (Number(v.untrimmed) || 0) / 5 * 3 + (Number(v.inbound) || 0) / 5 * 3,
+    computeTotal: (v) => (Number(v.trimmed) || 0) + (Number(v.untrimmed) || 0) / 5 * 3,
   },
   {
     id: 'f-chive', name: '쪽파', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (900g 1봉지=2바트)',
@@ -77,12 +77,12 @@ function ratioItem(id: string, name: string, cat: string, unitDesc: string, opts
 
   const defaultCompute: ItemConfig['computeTotal'] = (v) => {
     if (opts?.ratioOnly) {
-      return (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0);
+      return (Number(v.usedRatio) || 0);
     }
     if (opts?.unusedOnly) {
-      return (Number(v.unused) || 0) + (Number(v.inbound) || 0);
+      return (Number(v.unused) || 0);
     }
-    return (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0);
+    return (Number(v.unused) || 0) + (Number(v.usedRatio) || 0);
   };
 
   return {
@@ -104,7 +104,7 @@ const MEAT_ITEMS: ItemConfig[] = [
     totalLabel: '총재고(팩)',
     computeTotal: (v, s) => {
       const ppt = s?.meatPacksPerTray?.['m-beef'] || 10;
-      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0) + (Number(v.inbound) || 0) * ppt;
+      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0);
     },
   },
   { id: 'm-pork', name: '돼지', category: '고기류', vendor: 'marketbom', unitDesc: '10kg 1판',
@@ -117,7 +117,7 @@ const MEAT_ITEMS: ItemConfig[] = [
     totalLabel: '총재고(팩)',
     computeTotal: (v, s) => {
       const ppt = s?.meatPacksPerTray?.['m-pork'] || 10;
-      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0) + (Number(v.inbound) || 0) * ppt;
+      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0);
     },
   },
   { id: 'm-chicken', name: '닭', category: '고기류', vendor: 'marketbom', unitDesc: '10kg 1판',
@@ -130,7 +130,7 @@ const MEAT_ITEMS: ItemConfig[] = [
     totalLabel: '총재고(팩)',
     computeTotal: (v, s) => {
       const ppt = s?.meatPacksPerTray?.['m-chicken'] || 10;
-      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0) + (Number(v.inbound) || 0) * ppt;
+      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0);
     },
   },
 ];
@@ -158,7 +158,7 @@ const SAUCE_ITEMS: ItemConfig[] = sauceNames.map(([id, name, unit]) => {
   if (mult) {
     return ratioItem(id, name, '소스류', unit, {
       totalLabel: '총재고(팩)',
-      computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * mult,
+      computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
     });
   }
   return ratioItem(id, name, '소스류', unit, { totalLabel: '총재고(팩)' });
@@ -169,7 +169,7 @@ const REFRIG_ITEMS: ItemConfig[] = [
   ratioItem('mr-parmesan', '파마산', '그 외 냉장제품', '팩', { usedLabel: '사용중 비율', unusedLabel: '미사용팩', totalLabel: '총재고(팩)' }),
   ratioItem('mr-yogurt', '요거트', '그 외 냉장제품', '2통 1박스', {
     usedLabel: '사용중 비율', unusedLabel: '미사용통', totalLabel: '총재고(통)',
-    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 2,
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }),
   {
     id: 'mr-myeongyi', name: '명이나물', category: '그 외 냉장제품', vendor: 'marketbom', unitDesc: '10kg 1통',
@@ -188,15 +188,15 @@ const REFRIG_ITEMS: ItemConfig[] = [
 const FROZEN_ITEMS: ItemConfig[] = [
   ratioItem('mf-sweetpotato', '고구마', '냉동제품', '2팩 1박스', {
     totalLabel: '총재고(팩)',
-    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 2,
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }),
   ratioItem('mf-pumpkin', '단호박', '냉동제품', '5팩 1박스', {
     totalLabel: '총재고(팩)',
-    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 5,
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }),
   ratioItem('mf-greenbean', '그린빈', '냉동제품', '10팩 1박스', {
     totalLabel: '총재고(팩)',
-    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 10,
+    computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }),
 ];
 
@@ -218,7 +218,7 @@ const PKG_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: boo
   ['mp-nohole-lid', '무타공리드', '100개 1줄'],
   ['mp-square-lid', '사각리드', '50개 6봉지 1박스', {
     totalLabel: '총재고(봉지)',
-    computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 6,
+    computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }],
   ['mp-bag-s', '포장봉투(소)', '200장 1봉지', { unusedOnly: true }],
   ['mp-band', '띠지', '2500장 1박스', { ratioOnly: true }],
@@ -239,7 +239,7 @@ const OTHER_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: b
       { key: 'inbound', label: '입고분(박스)', type: 'number' },
       { key: 'order', label: '발주량', type: 'number' },
     ],
-    computeTotal: (v) => (Number(v.unused) || 0) * 20 + (Number(v.openBags) || 0) + (Number(v.inbound) || 0) * 20,
+    computeTotal: (v) => (Number(v.unused) || 0) * 20 + (Number(v.openBags) || 0),
   }],
   ['mo-napkin', '냅킨', '500장 1봉지'],
   ['mo-spoon', '숟가락', '100개 1봉지'],
@@ -257,7 +257,7 @@ const OTHER_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: b
   ['mo-almond', '아몬드분태', '1팩'],
   ['mo-agave', '아가베시럽', '2통 1묶음', {
     totalLabel: '총재고(통)',
-    computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 2,
+    computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }],
   ['mo-yogurt-spoon', '요거트스푼', '100개 1봉지'],
   ['mo-red-pepper', '크러쉬드 레드페퍼', '1통'],
