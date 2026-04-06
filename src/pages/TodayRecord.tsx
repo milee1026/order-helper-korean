@@ -8,9 +8,11 @@ import { MarketbomForm } from '@/components/MarketbomForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function TodayRecord() {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const settings = loadSettings();
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(today);
@@ -113,14 +115,14 @@ export function TodayRecord() {
   return (
     <div>
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3 mb-3 p-2 bg-muted/30 rounded border">
+      <div className={`flex flex-wrap items-center gap-3 mb-3 p-2 bg-muted/30 rounded border ${isMobile ? 'gap-2' : ''}`}>
         <label className="flex items-center gap-1 text-xs">
           <span className="text-muted-foreground">날짜</span>
-          <Input type="date" className="h-7 w-36 text-xs" value={date} onChange={e => setDate(e.target.value)} />
+          <Input type="date" className={`h-7 text-xs ${isMobile ? 'w-32' : 'w-36'}`} value={date} onChange={e => setDate(e.target.value)} />
         </label>
         <label className="flex items-center gap-1 text-xs">
           <span className="text-muted-foreground">거래처</span>
-          <select className="h-7 border rounded px-2 text-xs bg-background" value={vendor} onChange={e => setVendor(e.target.value as Vendor)}>
+          <select className={`h-7 border rounded px-2 text-xs bg-background ${isMobile ? 'flex-1' : ''}`} value={vendor} onChange={e => setVendor(e.target.value as Vendor)}>
             <option value="farmers">파머스</option>
             <option value="marketbom">마켓봄</option>
           </select>
