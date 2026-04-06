@@ -100,9 +100,10 @@ const MEAT_ITEMS: ItemConfig[] = [
       { key: 'inbound', label: '입고분(판)', type: 'number' },
       { key: 'order', label: '발주량(판)', type: 'number' },
     ],
+    totalLabel: '총재고(팩)',
     computeTotal: (v, s) => {
       const ppt = s?.meatPacksPerTray?.['m-beef'] || 10;
-      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0);
+      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0) + (Number(v.inbound) || 0) * ppt;
     },
   },
   { id: 'm-pork', name: '돼지', category: '고기류', vendor: 'marketbom', unitDesc: '10kg 1판',
@@ -112,9 +113,10 @@ const MEAT_ITEMS: ItemConfig[] = [
       { key: 'inbound', label: '입고분(판)', type: 'number' },
       { key: 'order', label: '발주량(판)', type: 'number' },
     ],
+    totalLabel: '총재고(팩)',
     computeTotal: (v, s) => {
       const ppt = s?.meatPacksPerTray?.['m-pork'] || 10;
-      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0);
+      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0) + (Number(v.inbound) || 0) * ppt;
     },
   },
   { id: 'm-chicken', name: '닭', category: '고기류', vendor: 'marketbom', unitDesc: '10kg 1판',
@@ -124,9 +126,10 @@ const MEAT_ITEMS: ItemConfig[] = [
       { key: 'inbound', label: '입고분(판)', type: 'number' },
       { key: 'order', label: '발주량(판)', type: 'number' },
     ],
+    totalLabel: '총재고(팩)',
     computeTotal: (v, s) => {
       const ppt = s?.meatPacksPerTray?.['m-chicken'] || 10;
-      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0);
+      return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0) + (Number(v.inbound) || 0) * ppt;
     },
   },
 ];
