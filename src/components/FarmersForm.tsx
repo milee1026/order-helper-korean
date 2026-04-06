@@ -215,7 +215,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                       { key: 'portioned', label: '소분(1/4 바트)' },
                       { key: 'unportioned', label: '미소분(봉지)' },
                       { key: 'inbound', label: '입고분(봉지)' },
-                      { key: 'order', label: '발주량(봉지/g)' },
+                      { key: 'order', label: '발주량(봉지)' },
                     ].map(f => (
                       <label key={f.key} className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
