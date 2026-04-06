@@ -173,9 +173,9 @@ const REFRIG_ITEMS: ItemConfig[] = [
 
 // ─── FROZEN ───
 const FROZEN_ITEMS: ItemConfig[] = [
-  ratioItem('mf-sweetpotato', '고구마', '냉동제품', '2팩 1박스'),
-  ratioItem('mf-pumpkin', '단호박', '냉동제품', '5팩 1박스'),
-  ratioItem('mf-greenbean', '그린빈', '냉동제품', '10팩 1박스'),
+  ratioItem('mf-sweetpotato', '고구마', '냉동제품', '2팩 1박스', { totalLabel: '총재고(팩)' }),
+  ratioItem('mf-pumpkin', '단호박', '냉동제품', '5팩 1박스', { totalLabel: '총재고(팩)' }),
+  ratioItem('mf-greenbean', '그린빈', '냉동제품', '10팩 1박스', { totalLabel: '총재고(팩)' }),
 ];
 
 // ─── PACKAGING ───
