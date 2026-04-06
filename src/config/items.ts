@@ -155,8 +155,8 @@ const SAUCE_ITEMS: ItemConfig[] = sauceNames.map(([id, name, unit]) =>
 
 // ─── OTHER REFRIGERATED ───
 const REFRIG_ITEMS: ItemConfig[] = [
-  ratioItem('mr-parmesan', '파마산', '그 외 냉장제품', '팩', { usedLabel: '사용중 비율', unusedLabel: '미사용팩' }),
-  ratioItem('mr-yogurt', '요거트', '그 외 냉장제품', '2통 1박스', { usedLabel: '사용중 비율', unusedLabel: '미사용통' }),
+  ratioItem('mr-parmesan', '파마산', '그 외 냉장제품', '팩', { usedLabel: '사용중 비율', unusedLabel: '미사용팩', totalLabel: '총재고(팩)' }),
+  ratioItem('mr-yogurt', '요거트', '그 외 냉장제품', '2통 1박스', { usedLabel: '사용중 비율', unusedLabel: '미사용통', totalLabel: '총재고(통)' }),
   {
     id: 'mr-myeongyi', name: '명이나물', category: '그 외 냉장제품', vendor: 'marketbom', unitDesc: '10kg 1통',
     fields: [
@@ -166,7 +166,8 @@ const REFRIG_ITEMS: ItemConfig[] = [
       { key: 'inbound', label: '입고분', type: 'number' },
       { key: 'order', label: '발주량', type: 'number' },
     ],
-    computeTotal: (v) => (Number(v.quarterFull) || 0) + (Number(v.quarterRatio) || 0) + (Number(v.halfRatio) || 0) * 2,
+    totalLabel: '총재고(환산)',
+    computeTotal: (v) => (Number(v.quarterFull) || 0) + (Number(v.quarterRatio) || 0) + (Number(v.halfRatio) || 0) * 2 + (Number(v.inbound) || 0),
   },
 ];
 
