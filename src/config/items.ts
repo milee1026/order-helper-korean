@@ -31,6 +31,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'inbound', label: '입고분', type: 'number' },
       { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
+    computeTotal: (v) => (Number(v.trimmed) || 0) + (Number(v.untrimmed) || 0),
   },
   {
     id: 'f-chive', name: '쪽파', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (900g 1봉지=2바트)',
@@ -40,6 +41,7 @@ export const FARMERS_ITEMS: ItemConfig[] = [
       { key: 'inbound', label: '입고분', type: 'text' },
       { key: 'order', label: '발주량', type: 'text' },
     ],
+    computeTotal: (v) => (Number(v.portioned) || 0) + (Number(v.unportioned) || 0),
   },
 ];
 
