@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { RatioSelector } from '@/components/RatioSelector';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
 
+import { Button } from '@/components/ui/button';
+
 interface MarketbomFormProps {
   data: Record<string, ItemData>;
   onChange: (itemId: string, data: ItemData) => void;
@@ -28,12 +30,32 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
     onChange(itemId, { ...current, memo: val });
   };
 
+  const resetCategory = (cat: string) => {
+    const items = getItemsByCategory(cat);
+    items.forEach(item => {
+      onChange(item.id, { itemId: item.id, values: {}, inbound: '', order: '', memo: '' });
+    });
+  };
+
   return (
     <div>
       {MARKETBOM_CATEGORIES.map(cat => {
         const items = getItemsByCategory(cat);
         return (
-          <CollapsibleSection key={cat} title={`${cat} (${items.length})`}>
+          <CollapsibleSection
+            key={cat}
+            title={`${cat} (${items.length})`}
+            headerRight={
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                onClick={(e) => { e.stopPropagation(); resetCategory(cat); }}
+              >
+                초기화
+              </Button>
+            }
+          >
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-muted/50">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DailyRecord, ItemData, Vendor, RecorderType } from '@/types';
-import { getItemsByVendor } from '@/config/items';
+import { getItemsByVendor, FARMERS_ITEMS } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { addRecord, getRecordsByDate, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
 import { FarmersForm } from '@/components/FarmersForm';
@@ -161,6 +161,21 @@ export function TodayRecord() {
         <Button size="sm" onClick={handleSave}>
           {editingId ? '수정 저장' : '저장'}
         </Button>
+        {vendor === 'farmers' && (
+          <Button size="sm" variant="outline" onClick={() => {
+            const cleared: Record<string, ItemData> = {};
+            FARMERS_ITEMS.forEach(item => {
+              cleared[item.id] = { itemId: item.id, values: {}, inbound: '', order: '', memo: '' };
+            });
+            setItemData(prev => {
+              const next = { ...prev };
+              FARMERS_ITEMS.forEach(item => { next[item.id] = cleared[item.id]; });
+              return next;
+            });
+          }}>
+            초기화
+          </Button>
+        )}
         {editingId && (
           <Button size="sm" variant="outline" onClick={handleDuplicate}>
             다른 날짜로 복사
