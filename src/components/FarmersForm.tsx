@@ -56,7 +56,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
   const sdRatio = Number(sd.values.usedRatio) || 0;
   const sdUnport = Number(sd.values.unportioned) || 0;
   const sdInbound = Number(sd.values.inbound) || 0;
-  const sdTotal = sdUnused + sdRatio + sdUnport + sdInbound;
+  const sdTotal = sdUnused + sdRatio + sdUnport;
   const sdOrderKg = Number(sd.values.orderKg) || 0;
   const sdOrderRack = sdOrderKg > 0 ? sdOrderKg / 2 : null;
 
@@ -77,7 +77,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
   const pdInboundKg = Number(pd.values.inbound) || 0;
   const pdUntrimmedConv = pdUntrimmedKg / 5 * 3;
   const pdInboundConv = pdInboundKg / 5 * 3;
-  const pdTotal = pdUnused + pdRatio + pdUntrimmedConv + pdInboundConv;
+  const pdTotal = pdUnused + pdRatio + pdUntrimmedConv;
 
   // ── 쪽파 ──
   const cd = getItem('f-chive');
@@ -87,7 +87,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
   const cdInboundBags = Number(cd.values.inbound) || 0;
   const cdUnportConv = cdUnportBags * 2;
   const cdInboundConv = cdInboundBags * 2;
-  const cdTotal = cdUnused + cdRatio + cdUnportConv + cdInboundConv;
+  const cdTotal = cdUnused + cdRatio + cdUnportConv;
 
   return (
     <div className="overflow-x-auto">
