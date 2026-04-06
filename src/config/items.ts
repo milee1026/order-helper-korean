@@ -257,7 +257,7 @@ const OTHER_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: b
   ['mo-almond', '아몬드분태', '1팩'],
   ['mo-agave', '아가베시럽', '2통 1묶음', {
     totalLabel: '총재고(통)',
-    computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0) + (Number(v.inbound) || 0) * 2,
+    computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }],
   ['mo-yogurt-spoon', '요거트스푼', '100개 1봉지'],
   ['mo-red-pepper', '크러쉬드 레드페퍼', '1통'],
