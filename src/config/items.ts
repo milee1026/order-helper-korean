@@ -161,13 +161,20 @@ const sauceNames: [string, string, string][] = [
 const SAUCE_INBOUND_MULTIPLIER: Record<string, number> = {
   'ms-salpa': 10, 'ms-rose': 10, 'ms-curry': 10,
 };
+const BOX_SAUCE_IDS = new Set(['ms-salpa', 'ms-rose', 'ms-curry']);
 const SAUCE_ITEMS: ItemConfig[] = sauceNames.map(([id, name, unit]) => {
-  const mult = SAUCE_INBOUND_MULTIPLIER[id];
-  if (mult) {
-    return ratioItem(id, name, '소스류', unit, {
+  if (BOX_SAUCE_IDS.has(id)) {
+    return {
+      id, name, category: '소스류', vendor: 'marketbom' as const, unitDesc: unit,
+      fields: [
+        { key: 'unusedBoxes', label: '미사용(박스)', type: 'number' as const },
+        { key: 'openPacks', label: '뜯은 박스 낱개(팩)', type: 'number' as const },
+        { key: 'inbound', label: '입고분(박스)', type: 'number' as const },
+        { key: 'order', label: '발주량(박스)', type: 'number' as const },
+      ],
       totalLabel: '총재고(팩)',
-      computeTotal: (v) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
-    });
+      computeTotal: (v: Record<string, number>) => (Number(v.unusedBoxes) || 0) * 10 + (Number(v.openPacks) || 0),
+    };
   }
   return ratioItem(id, name, '소스류', unit, { totalLabel: '총재고(팩)' });
 });
