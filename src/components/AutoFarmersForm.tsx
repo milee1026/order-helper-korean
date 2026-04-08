@@ -179,8 +179,8 @@ export function AutoFarmersForm({ data, onChange, recommendations }: Props) {
                 )}
                 <div className="bg-muted/50 rounded p-2 space-y-1 text-xs">
                   <div className="flex justify-between"><span className="text-muted-foreground">{item.stockLabel}</span><b>{d.currentStock ? round2(d.currentStock) : '-'}</b></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">기본 발주량 후보</span><span>{d.defaultOrderCandidate || '-'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">최소 기준 후보</span><span>{d.minThresholdCandidate ? round2(d.minThresholdCandidate) : '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">평균발주량</span><span>{d.defaultOrderCandidate || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">최소재고량</span><span>{d.minThresholdCandidate ? round2(d.minThresholdCandidate) : '-'}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">추천 발주량({item.orderUnit})</span><b className="text-primary">{d.recommendedOrder || '-'}</b></div>
                 </div>
                 <label className="flex items-center justify-between gap-2 text-xs">
@@ -210,13 +210,13 @@ export function AutoFarmersForm({ data, onChange, recommendations }: Props) {
           <tr className="bg-muted">
             <th className="border px-2 py-1 text-left w-24">품목</th>
             <th className="border px-2 py-1 text-left">재고 입력</th>
-            <th className="border px-1 py-1 w-14">현재재고</th>
             <th className="border px-1 py-1 w-12">입고(참고)</th>
-            <th className="border px-1 py-1 w-12">기본후보</th>
-            <th className="border px-1 py-1 w-12">최소기준</th>
-            <th className="border px-1 py-1 w-14">추천</th>
-            <th className="border px-1 py-1 w-16">최종발주</th>
+            <th className="border px-1 py-1 w-14">현재재고</th>
             <th className="border px-1 py-1 w-10">상태</th>
+            <th className="border px-1 py-1 w-12">평균발주량</th>
+            <th className="border px-1 py-1 w-12">최소재고량</th>
+            <th className="border px-1 py-1 w-14">추천발주량</th>
+            <th className="border px-1 py-1 w-16">최종발주</th>
             <th className="border px-1 py-1 w-20">메모</th>
           </tr>
         </thead>
@@ -248,20 +248,20 @@ export function AutoFarmersForm({ data, onChange, recommendations }: Props) {
                     ))}
                   </div>
                 </td>
+                <td className="border px-1 py-1 text-center">
+                  <Input type="number" min="0" className="w-12 h-6 text-xs px-1 mx-auto" value={d.inboundRef ?? ''} onChange={e => updateInbound(item.id, e.target.value)} />
+                </td>
                 <td className="border px-1 py-1 text-center font-mono">
                   <div className="text-muted-foreground" style={{ fontSize: '9px' }}>{item.stockLabel}</div>
                   <b>{d.currentStock ? round2(d.currentStock) : '-'}</b>
                 </td>
-                <td className="border px-1 py-1 text-center">
-                  <Input type="number" min="0" className="w-12 h-6 text-xs px-1 mx-auto" value={d.inboundRef ?? ''} onChange={e => updateInbound(item.id, e.target.value)} />
-                </td>
+                <td className="border px-1 py-1 text-center"><StatusBadge status={status} /></td>
                 <td className="border px-1 py-1 text-center font-mono">{d.defaultOrderCandidate || '-'}</td>
                 <td className="border px-1 py-1 text-center font-mono">{d.minThresholdCandidate ? round2(d.minThresholdCandidate) : '-'}</td>
                 <td className="border px-1 py-1 text-center font-mono font-medium text-primary">{d.recommendedOrder || '-'}</td>
                 <td className="border px-1 py-1 text-center">
                   <Input type="number" min="0" className="w-14 h-6 text-xs px-1 border-primary mx-auto" value={d.finalOrder || ''} onChange={e => updateFinal(item.id, Number(e.target.value.replace(/-/g, '')) || 0)} />
                 </td>
-                <td className="border px-1 py-1 text-center"><StatusBadge status={status} /></td>
                 <td className="border px-1 py-1">
                   <Input className="h-6 text-xs px-1" value={d.memo} onChange={e => updateMemo(item.id, e.target.value)} />
                 </td>
