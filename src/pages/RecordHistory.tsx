@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { deleteRecord, useRecords } from '@/utils/storage';
+import { loadRecords, deleteRecord } from '@/utils/storage';
 import { getItemById } from '@/config/items';
 import { DAY_NAMES_KR } from '@/config/ordering';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { CollapsibleSection } from '@/components/CollapsibleSection';
 
 export function RecordHistory() {
   const { toast } = useToast();
-  const records = useRecords();
+  const [records, setRecords] = useState(() => loadRecords());
   const [filterVendor, setFilterVendor] = useState<string>('all');
 
   const filtered = useMemo(() => {
@@ -20,6 +20,7 @@ export function RecordHistory() {
   const handleDelete = (id: string) => {
     if (!confirm('이 기록을 삭제하시겠습니까?')) return;
     deleteRecord(id);
+    setRecords(loadRecords());
     toast({ title: '삭제 완료' });
   };
 

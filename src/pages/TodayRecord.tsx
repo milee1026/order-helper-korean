@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DailyRecord, ItemData, Vendor, RecorderType } from '@/types';
 import { getItemsByVendor, FARMERS_ITEMS } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
-import { addRecord, getRecordsByDate, deleteRecord, useRecords, useSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
+import { addRecord, getRecordsByDate, deleteRecord, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
 import { shouldShowInbound, getAutoInboundFromPrevOrder } from '@/utils/inboundLogic';
 import { FarmersForm } from '@/components/FarmersForm';
 import { MarketbomForm } from '@/components/MarketbomForm';
@@ -55,8 +55,7 @@ function createPrefilledInboundData(vendor: Vendor, autoInbound: Record<string, 
 export function TodayRecord() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const settings = useSettings();
-  const records = useRecords();
+  const settings = loadSettings();
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(today);
   const [vendor, setVendor] = useState<Vendor>('farmers');
@@ -73,9 +72,6 @@ export function TodayRecord() {
   // Exception schedule
   const [exceptionNoDelivery, setExceptionNoDelivery] = useState(false);
   const [exceptionReason, setExceptionReason] = useState('');
-  const existingRecord = useMemo(() => {
-    return records.find(r => r.date === date && r.vendor === vendor) || null;
-  }, [records, date, vendor]);
 
   // Inbound visibility & auto-fill
   const showInbound = shouldShowInbound(vendor, dayOfWeek, exceptionNoDelivery);
@@ -91,14 +87,16 @@ export function TodayRecord() {
     setExceptionReason('');
   }, [date, vendor]);
 
+  // Load existing record or draft for this date+vendor
   useEffect(() => {
-    if (existingRecord) {
+    const existing = getRecordsByDate(date).find(r => r.vendor === vendor);
+    if (existing) {
       const dataMap: Record<string, ItemData> = {};
-      existingRecord.items.forEach(item => { dataMap[item.itemId] = item; });
+      existing.items.forEach(item => { dataMap[item.itemId] = item; });
       setItemData(dataMap);
-      setEditingId(existingRecord.id);
-      setRecorder(existingRecord.recorderType);
-      setCoverDaysInput(existingRecord.coverDays?.join(',') || getCoverDays(vendor, dayOfWeek));
+      setEditingId(existing.id);
+      setRecorder(existing.recorderType);
+      setCoverDaysInput(existing.coverDays?.join(',') || getCoverDays(vendor, dayOfWeek));
     } else {
       const draft = loadDraft(date, vendor);
       if (draft) {
@@ -110,7 +108,7 @@ export function TodayRecord() {
       setEditingId(null);
       setCoverDaysInput(getCoverDays(vendor, dayOfWeek));
     }
-  }, [date, vendor, autoInbound, showInbound, dayOfWeek, existingRecord?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [date, vendor, autoInbound, showInbound, dayOfWeek]);
 
   // Auto-save draft on every change
   const handleItemChange = useCallback((itemId: string, d: ItemData) => {

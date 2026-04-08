@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Vendor, RecorderType, AutomationItemData, AutomationRecord } from '@/types';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
-import { useRecords, useSettings } from '@/utils/storage';
+import { loadRecords, loadSettings } from '@/utils/storage';
 import { getRecommendations, computeRecommendedOrder } from '@/utils/recommendations';
-import { addAutomationRecord, useAutomationRecords } from '@/utils/automationStorage';
+import { addAutomationRecord, getAutomationRecordsByDate } from '@/utils/automationStorage';
 import { normalizeOrderQuantity } from '@/utils/itemUnits';
 import { getItemsByVendor, FARMERS_ITEMS, MARKETBOM_ITEMS } from '@/config/items';
 import { shouldShowInbound, getAutoInboundFromPrevOrder } from '@/utils/inboundLogic';
@@ -19,9 +19,7 @@ const EXCEPTION_REASONS = ['업체 휴무', '공휴일', '배송 변경', '기�
 export function AutomationOrder() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const settings = useSettings();
-  const records = useRecords();
-  const automationRecords = useAutomationRecords();
+  const settings = loadSettings();
   const today = new Date().toISOString().split('T')[0];
 
   const [date, setDate] = useState(today);
@@ -41,9 +39,6 @@ export function AutomationOrder() {
 
   const orderDays = getOrderDays(vendor);
   const isOrderDay = orderDays.includes(dayOfWeek);
-  const existingAutomationRecord = useMemo(() => {
-    return automationRecords.find(r => r.date === date && r.vendor === vendor) || null;
-  }, [automationRecords, date, vendor]);
 
   // Inbound visibility
   const showInbound = shouldShowInbound(vendor, dayOfWeek, exceptionNoDelivery);
@@ -55,6 +50,7 @@ export function AutomationOrder() {
   }, [date, vendor, dayOfWeek, showInbound]);
 
   // Load historical records for recommendations
+  const records = useMemo(() => loadRecords(), []);
   const recommendations = useMemo(
     () => getRecommendations(records, vendor, dayOfWeek, settings),
     [records, vendor, dayOfWeek, settings]
@@ -68,16 +64,19 @@ export function AutomationOrder() {
     setExceptionReason('');
   }, [date, vendor]);
 
+  // Load existing automation record for this date+vendor
   useEffect(() => {
-    if (existingAutomationRecord) {
+    const existing = getAutomationRecordsByDate(date, vendor);
+    if (existing.length > 0) {
+      const rec = existing[0];
       const dataMap: Record<string, AutomationItemData> = {};
-      existingAutomationRecord.items.forEach(item => { dataMap[item.itemId] = item; });
+      rec.items.forEach(item => { dataMap[item.itemId] = item; });
       setAutoItems(dataMap);
-      setEditingId(existingAutomationRecord.id);
-      setRecorder(existingAutomationRecord.recorderType);
+      setEditingId(rec.id);
+      setRecorder(rec.recorderType);
       // Restore saved cover days if present
-      if (existingAutomationRecord.coverDays && existingAutomationRecord.coverDays.length > 0) {
-        setCoverDaysInput(existingAutomationRecord.coverDays.join(','));
+      if (rec.coverDays && rec.coverDays.length > 0) {
+        setCoverDaysInput(rec.coverDays.join(','));
       }
     } else {
       // Auto-fill inbound for new records
@@ -102,7 +101,7 @@ export function AutomationOrder() {
       }
       setEditingId(null);
     }
-  }, [date, vendor, existingAutomationRecord?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [date, vendor]);
 
   const handleItemChange = (itemId: string, data: AutomationItemData) => {
     setAutoItems(prev => ({ ...prev, [itemId]: data }));

@@ -11,22 +11,15 @@ export interface DraftData {
   recorder: RecorderType;
 }
 
-type InventorySyncAdapter = {
-  upsertRecord?: (record: DailyRecord) => Promise<void> | void;
-  deleteRecord?: (recordId: string) => Promise<void> | void;
-  upsertSettings?: (settings: AppSettings) => Promise<void> | void;
+export const defaultSettings: AppSettings = {
+  trackingWeeks: 2,
+  meatPacksPerTray: { 'm-beef': 10, 'm-pork': 10, 'm-chicken': 10 },
 };
 
 const recordListeners = new Set<() => void>();
 const settingsListeners = new Set<() => void>();
 const draftListeners = new Set<() => void>();
 
-export const defaultSettings: AppSettings = {
-  trackingWeeks: 2,
-  meatPacksPerTray: { 'm-beef': 10, 'm-pork': 10, 'm-chicken': 10 },
-};
-
-let syncAdapter: InventorySyncAdapter | null = null;
 let recordsCache: DailyRecord[] = readJson(RECORDS_KEY, []);
 let settingsCache: AppSettings = normalizeSettings(readJson(SETTINGS_KEY, defaultSettings));
 let draftsCache: Record<string, DraftData> = readJson(DRAFT_KEY, {});
@@ -46,8 +39,12 @@ function writeJson<T>(key: string, value: T) {
     if (typeof localStorage === 'undefined') return;
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // Keep the in-memory cache even if the browser storage is unavailable.
+    // Keep the in-memory cache even if browser storage is unavailable.
   }
+}
+
+function emit(listeners: Set<() => void>) {
+  listeners.forEach((listener) => listener());
 }
 
 function normalizeSettings(settings: Partial<AppSettings> | null | undefined): AppSettings {
@@ -108,16 +105,8 @@ function mergeRecords(current: DailyRecord[], incoming: DailyRecord[]): DailyRec
   return next;
 }
 
-function emit(listeners: Set<() => void>) {
-  listeners.forEach((listener) => listener());
-}
-
 function draftKey(date: string, vendor: string): string {
   return `${date}__${vendor}`;
-}
-
-export function registerInventorySyncAdapter(adapter: InventorySyncAdapter | null) {
-  syncAdapter = adapter;
 }
 
 export function loadRecords(): DailyRecord[] {
@@ -135,40 +124,10 @@ export function useRecords(): DailyRecord[] {
   );
 }
 
-export function replaceRecordsFromRemote(records: DailyRecord[]) {
-  recordsCache = mergeRecords(recordsCache, records);
-  writeJson(RECORDS_KEY, recordsCache);
-  emit(recordListeners);
-}
-
-export function mergeRecordsFromRemote(records: DailyRecord[]) {
-  replaceRecordsFromRemote(records);
-}
-
 export function saveRecords(records: DailyRecord[]) {
-  const next = records.map(normalizeRecord);
-  const previous = recordsCache;
-  recordsCache = next;
+  recordsCache = records.map(normalizeRecord);
   writeJson(RECORDS_KEY, recordsCache);
   emit(recordListeners);
-
-  if (!syncAdapter) return;
-
-  const prevById = new Map(previous.map((record) => [record.id, record]));
-  const nextById = new Map(next.map((record) => [record.id, record]));
-
-  for (const record of next) {
-    const current = prevById.get(record.id);
-    if (!current || JSON.stringify(current) !== JSON.stringify(record)) {
-      void Promise.resolve(syncAdapter.upsertRecord?.(record)).catch(() => {});
-    }
-  }
-
-  for (const id of prevById.keys()) {
-    if (!nextById.has(id)) {
-      void Promise.resolve(syncAdapter.deleteRecord?.(id)).catch(() => {});
-    }
-  }
 }
 
 export function addRecord(record: DailyRecord) {
@@ -205,27 +164,10 @@ export function useSettings(): AppSettings {
   );
 }
 
-export function replaceSettingsFromRemote(settings: AppSettings) {
-  const next = normalizeSettings(settings);
-  settingsCache = next;
-  writeJson(SETTINGS_KEY, settingsCache);
-  emit(settingsListeners);
-}
-
-export function mergeSettingsFromRemote(settings: AppSettings) {
-  replaceSettingsFromRemote(settings);
-}
-
 export function saveSettings(settings: AppSettings) {
-  const next = normalizeSettings(settings);
-  const changed = JSON.stringify(next) !== JSON.stringify(settingsCache);
-  settingsCache = next;
+  settingsCache = normalizeSettings(settings);
   writeJson(SETTINGS_KEY, settingsCache);
   emit(settingsListeners);
-
-  if (changed && syncAdapter?.upsertSettings) {
-    void Promise.resolve(syncAdapter.upsertSettings(settingsCache)).catch(() => {});
-  }
 }
 
 export function saveDraft(date: string, vendor: string, draft: DraftData) {
@@ -255,4 +197,28 @@ export function deleteDraft(date: string, vendor: string) {
   } catch {
     // Ignore draft deletion failures.
   }
+}
+
+export function mergeRecordsFromRemote(records: DailyRecord[]) {
+  recordsCache = mergeRecords(recordsCache, records);
+  writeJson(RECORDS_KEY, recordsCache);
+  emit(recordListeners);
+}
+
+export function replaceRecordsFromRemote(records: DailyRecord[]) {
+  recordsCache = records.map(normalizeRecord);
+  writeJson(RECORDS_KEY, recordsCache);
+  emit(recordListeners);
+}
+
+export function mergeSettingsFromRemote(settings: AppSettings) {
+  settingsCache = normalizeSettings(settings);
+  writeJson(SETTINGS_KEY, settingsCache);
+  emit(settingsListeners);
+}
+
+export function replaceSettingsFromRemote(settings: AppSettings) {
+  settingsCache = normalizeSettings(settings);
+  writeJson(SETTINGS_KEY, settingsCache);
+  emit(settingsListeners);
 }
