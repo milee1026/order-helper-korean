@@ -5,7 +5,7 @@ import { RatioSelector } from '@/components/RatioSelector';
 import { computeRecommendedOrder, getStockStatus } from '@/utils/recommendations';
 import { loadRecords } from '@/utils/storage';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getOrderUnit, getStockUnit, fmtWithUnit } from '@/utils/itemUnits';
+import { getOrderUnit, getStockUnit, fmtWithUnit, normalizeOrderQuantity } from '@/utils/itemUnits';
 
 interface Props {
   data: Record<string, AutomationItemData>;
@@ -58,7 +58,8 @@ export function AutoFarmersForm({ data, onChange, recommendations }: Props) {
     const stock = computeFarmersStock(id, newValues);
     const defOrd = rec?.defaultOrderCandidate || current.defaultOrderCandidate;
     const minThr = rec?.minThresholdCandidate || current.minThresholdCandidate;
-    const recommended = computeRecommendedOrder(stock, defOrd, minThr);
+    const rawRecommended = computeRecommendedOrder(stock, defOrd, minThr);
+    const recommended = normalizeOrderQuantity(id, rawRecommended);
     onChange(id, {
       ...current,
       currentStockValues: newValues,
