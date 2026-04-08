@@ -164,7 +164,7 @@ export function AutomationOrder() {
           <span className="text-muted-foreground">기록자</span>
           <select className="h-7 border rounded px-2 text-xs bg-background" value={recorder} onChange={e => setRecorder(e.target.value as RecorderType)}>
             <option value="manager">매니저</option>
-            <option value="staff">직원</option>
+            <option value="staff">스태프</option>
           </select>
         </label>
         <div className="flex items-center gap-2 text-xs">
