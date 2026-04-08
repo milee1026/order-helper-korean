@@ -88,6 +88,21 @@ const ITEM_UNITS: Record<string, ItemUnits> = {
   'mo-lid-sticker': { orderUnit: '팩', stockUnit: '팩' },
 };
 
+// Orderable unit step sizes (minimum orderable increment)
+const ORDER_STEP: Record<string, number> = {
+  'f-salad': 2,
+  'f-broccoli': 4,
+  'f-paprika': 5,
+  'f-chive': 1,
+};
+
+/** Round a raw order quantity UP to the nearest valid orderable multiple */
+export function normalizeOrderQuantity(itemId: string, raw: number): number {
+  if (raw <= 0) return 0;
+  const step = ORDER_STEP[itemId] || 1;
+  return Math.ceil(raw / step) * step;
+}
+
 export function getOrderUnit(itemId: string): string {
   return ITEM_UNITS[itemId]?.orderUnit || '';
 }

@@ -6,7 +6,7 @@ import { RatioSelector } from '@/components/RatioSelector';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
 import { computeRecommendedOrder, getStockStatus } from '@/utils/recommendations';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getOrderUnit, getStockUnit, fmtWithUnit } from '@/utils/itemUnits';
+import { getOrderUnit, getStockUnit, fmtWithUnit, normalizeOrderQuantity } from '@/utils/itemUnits';
 
 interface Props {
   data: Record<string, AutomationItemData>;
@@ -71,7 +71,8 @@ export function AutoMarketbomForm({ data, onChange, recommendations, settings }:
     const stock = computeMarketbomStock(itemId, newValues, settings);
     const defOrd = rec?.defaultOrderCandidate || current.defaultOrderCandidate;
     const minThr = rec?.minThresholdCandidate || current.minThresholdCandidate;
-    const recommended = computeRecommendedOrder(stock, defOrd, minThr);
+    const rawRecommended = computeRecommendedOrder(stock, defOrd, minThr);
+    const recommended = normalizeOrderQuantity(itemId, rawRecommended);
     onChange(itemId, {
       ...current,
       currentStockValues: newValues,
