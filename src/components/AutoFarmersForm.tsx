@@ -12,6 +12,8 @@ interface Props {
   onChange: (itemId: string, data: AutomationItemData) => void;
   recommendations: Record<string, { defaultOrderCandidate: number; minThresholdCandidate: number }>;
   settings: AppSettings;
+  showInbound?: boolean;
+  autoInbound?: Record<string, number>;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -46,7 +48,7 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`text-xs font-medium ${color}`}>{status}</span>;
 }
 
-export function AutoFarmersForm({ data, onChange, recommendations }: Props) {
+export function AutoFarmersForm({ data, onChange, recommendations, showInbound = true, autoInbound = {} }: Props) {
   const isMobile = useIsMobile();
   const broccoliAvg = useBroccoliAvgPerKg();
 
@@ -169,11 +171,13 @@ export function AutoFarmersForm({ data, onChange, recommendations }: Props) {
                     </label>
                   )
                 ))}
-                <label className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-muted-foreground">{item.inboundLabel} <span className="text-orange-500">(참고)</span></span>
-                  <Input type="number" min="0" className="w-20 h-8 text-sm px-2" value={d.inboundRef ?? ''} onChange={e => updateInbound(item.id, e.target.value)} />
-                </label>
-                {item.id === 'f-broccoli' && item.extraInbound && (
+                {showInbound && (
+                  <label className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">{item.inboundLabel} <span className="text-orange-500">(참고)</span></span>
+                    <Input type="number" min="0" className="w-20 h-8 text-sm px-2" value={d.inboundRef ?? (autoInbound[item.id] || '')} onChange={e => updateInbound(item.id, e.target.value)} />
+                  </label>
+                )}
+                {showInbound && item.id === 'f-broccoli' && item.extraInbound && (
                   <label className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">{item.extraInbound.label} <span className="text-orange-500">(참고)</span></span>
                     <Input type="number" min="0" className="w-20 h-8 text-sm px-2" value={d.currentStockValues.inboundCount ?? ''} onChange={e => updateVal(item.id, 'inboundCount', e.target.value)} />
@@ -251,7 +255,11 @@ export function AutoFarmersForm({ data, onChange, recommendations }: Props) {
                   </div>
                 </td>
                 <td className="border px-1 py-1 text-center">
-                  <Input type="number" min="0" className="w-12 h-6 text-xs px-1 mx-auto" value={d.inboundRef ?? ''} onChange={e => updateInbound(item.id, e.target.value)} />
+                  {showInbound ? (
+                    <Input type="number" min="0" className="w-12 h-6 text-xs px-1 mx-auto" value={d.inboundRef ?? (autoInbound[item.id] || '')} onChange={e => updateInbound(item.id, e.target.value)} />
+                  ) : (
+                    <span className="text-muted-foreground text-xs">-</span>
+                  )}
                 </td>
                 <td className="border px-1 py-1 text-center font-mono">
                   <div className="text-muted-foreground" style={{ fontSize: '9px' }}>{item.stockLabel}</div>

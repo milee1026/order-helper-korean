@@ -13,6 +13,8 @@ interface Props {
   onChange: (itemId: string, data: AutomationItemData) => void;
   recommendations: Record<string, { defaultOrderCandidate: number; minThresholdCandidate: number }>;
   settings: AppSettings;
+  showInbound?: boolean;
+  autoInbound?: Record<string, number>;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -60,7 +62,7 @@ function computeMarketbomStock(itemId: string, values: Record<string, number | s
   return (Number(values.unused) || 0) + (Number(values.usedRatio) || 0);
 }
 
-export function AutoMarketbomForm({ data, onChange, recommendations, settings }: Props) {
+export function AutoMarketbomForm({ data, onChange, recommendations, settings, showInbound = true, autoInbound = {} }: Props) {
   const isMobile = useIsMobile();
 
   const updateVal = (itemId: string, key: string, val: string | number) => {
@@ -138,10 +140,12 @@ export function AutoMarketbomForm({ data, onChange, recommendations, settings }:
                             </label>
                           )
                         ))}
-                        <label className="flex items-center justify-between gap-2 text-xs">
-                          <span className="text-muted-foreground">입고분 <span className="text-orange-500">(참고)</span></span>
-                          <Input type="number" min="0" className="w-20 h-8 text-sm px-2" value={d.inboundRef ?? ''} onChange={e => updateInbound(item.id, e.target.value)} />
-                        </label>
+                        {showInbound && (
+                          <label className="flex items-center justify-between gap-2 text-xs">
+                            <span className="text-muted-foreground">입고분 <span className="text-orange-500">(참고)</span></span>
+                            <Input type="number" min="0" className="w-20 h-8 text-sm px-2" value={d.inboundRef ?? (autoInbound[item.id] || '')} onChange={e => updateInbound(item.id, e.target.value)} />
+                          </label>
+                        )}
                         <div className="bg-muted/50 rounded p-2 space-y-1 text-xs">
                           <div className="flex justify-between"><span className="text-muted-foreground">{item.totalLabel || '현재 재고'}</span><b>{d.currentStock ? round2(d.currentStock) : '-'}</b></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">평균발주량</span><span>{fmtWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id))}</span></div>
@@ -206,7 +210,11 @@ export function AutoMarketbomForm({ data, onChange, recommendations, settings }:
                           </div>
                         </td>
                         <td className="border px-1 py-1 text-center">
-                          <Input type="number" min="0" className="w-12 h-6 text-xs px-1 mx-auto" value={d.inboundRef ?? ''} onChange={e => updateInbound(item.id, e.target.value)} />
+                          {showInbound ? (
+                            <Input type="number" min="0" className="w-12 h-6 text-xs px-1 mx-auto" value={d.inboundRef ?? (autoInbound[item.id] || '')} onChange={e => updateInbound(item.id, e.target.value)} />
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
                         </td>
                         <td className="border px-1 py-1 text-center font-mono">
                           <div className="text-muted-foreground" style={{ fontSize: '9px' }}>{item.totalLabel || '재고'}</div>
