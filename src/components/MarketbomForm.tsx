@@ -1,10 +1,9 @@
 import React from 'react';
-import { ItemConfig, ItemData, AppSettings } from '@/types';
+import { ItemData, AppSettings } from '@/types';
 import { MARKETBOM_CATEGORIES, getItemsByCategory } from '@/config/items';
 import { Input } from '@/components/ui/input';
 import { RatioSelector } from '@/components/RatioSelector';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
-
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -16,7 +15,7 @@ interface MarketbomFormProps {
   autoInbound?: Record<string, number>;
 }
 
-export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) {
+export function MarketbomForm({ data, onChange, settings, showInbound = true, autoInbound = {} }: MarketbomFormProps) {
   const getItem = (id: string): ItemData => data[id] || { itemId: id, values: {}, inbound: '', order: '', memo: '' };
   const isMobile = useIsMobile();
 
@@ -67,6 +66,7 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
                   const total = item.computeTotal
                     ? item.computeTotal(d.values as Record<string, number>, settings)
                     : undefined;
+                  const visibleFields = item.fields.filter(f => showInbound || f.key !== 'inbound');
                   return (
                     <div key={item.id} className="border rounded bg-background">
                       <div className="px-3 py-1.5 bg-muted/30 border-b flex items-center justify-between">
@@ -82,8 +82,13 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
                         )}
                       </div>
                       <div className="px-3 py-2 space-y-2">
-                        {item.fields.map(f => (
-                          <MobileFieldInput key={f.key} field={f} value={d.values[f.key]} onChange={(val) => updateField(item.id, f.key, val)} />
+                        {visibleFields.map(f => (
+                          <MobileFieldInput
+                            key={f.key}
+                            field={f}
+                            value={f.key === 'inbound' ? (d.values[f.key] ?? autoInbound[item.id] ?? '') : d.values[f.key]}
+                            onChange={(val) => updateField(item.id, f.key, val)}
+                          />
                         ))}
                         <label className="flex items-center justify-between gap-2 text-xs">
                           <span className="text-muted-foreground">메모</span>
@@ -110,6 +115,7 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
                     const total = item.computeTotal
                       ? item.computeTotal(d.values as Record<string, number>, settings)
                       : undefined;
+                    const visibleFields = item.fields.filter(f => showInbound || f.key !== 'inbound');
                     return (
                       <tr key={item.id} className="hover:bg-accent/30">
                         <td className="border px-1 py-1">
@@ -118,8 +124,14 @@ export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) 
                         </td>
                         <td className="border px-1 py-1">
                           <div className="flex flex-wrap gap-x-2 gap-y-1 items-center">
-                            {item.fields.map(f => (
-                              <FieldInput key={f.key} field={f} value={d.values[f.key]} onChange={(val) => updateField(item.id, f.key, val)} unitDesc={item.unitDesc} />
+                            {visibleFields.map(f => (
+                              <FieldInput
+                                key={f.key}
+                                field={f}
+                                value={f.key === 'inbound' ? (d.values[f.key] ?? autoInbound[item.id] ?? '') : d.values[f.key]}
+                                onChange={(val) => updateField(item.id, f.key, val)}
+                                unitDesc={item.unitDesc}
+                              />
                             ))}
                           </div>
                         </td>
@@ -207,7 +219,6 @@ function FieldInput({ field, value, onChange, unitDesc }: {
 }
 
 function extractPrimaryUnit(unitDesc: string): string {
-  // e.g. "75개 4팩 1박스" → "박스", "1팩" → "팩", "락" → "락"
   const parts = unitDesc.trim().split(/\s+/);
   const last = parts[parts.length - 1];
   return last.replace(/^\d+/, '');

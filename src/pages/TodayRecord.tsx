@@ -13,6 +13,45 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const EXCEPTION_REASONS = ['업체 휴무', '공휴일', '배송 변경', '기타'];
 
+function createPrefilledInboundData(vendor: Vendor, autoInbound: Record<string, number>): Record<string, ItemData> {
+  const entries = Object.entries(autoInbound);
+  if (entries.length === 0) return {};
+
+  const prefilled: Record<string, ItemData> = {};
+
+  for (const [itemId, qty] of entries) {
+    if (vendor === 'farmers') {
+      if (itemId === 'f-broccoli') {
+        prefilled[itemId] = {
+          itemId,
+          values: { inboundKg: qty },
+          inbound: qty,
+          order: '',
+          memo: '',
+        };
+      } else {
+        prefilled[itemId] = {
+          itemId,
+          values: { inbound: qty },
+          inbound: qty,
+          order: '',
+          memo: '',
+        };
+      }
+      continue;
+    }
+
+    prefilled[itemId] = {
+      itemId,
+      values: { inbound: qty },
+      inbound: qty,
+      order: '',
+      memo: '',
+    };
+  }
+
+  return prefilled;
+}
 export function TodayRecord() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -57,17 +96,19 @@ export function TodayRecord() {
       setItemData(dataMap);
       setEditingId(existing.id);
       setRecorder(existing.recorderType);
+      setCoverDaysInput(existing.coverDays?.join(',') || getCoverDays(vendor, dayOfWeek));
     } else {
       const draft = loadDraft(date, vendor);
       if (draft) {
         setItemData(draft.itemData);
         setRecorder(draft.recorder);
       } else {
-        setItemData({});
+        setItemData(createPrefilledInboundData(vendor, showInbound ? autoInbound : {}));
       }
       setEditingId(null);
+      setCoverDaysInput(getCoverDays(vendor, dayOfWeek));
     }
-  }, [date, vendor]);
+  }, [date, vendor, autoInbound, showInbound, dayOfWeek]);
 
   // Auto-save draft on every change
   const handleItemChange = useCallback((itemId: string, d: ItemData) => {
