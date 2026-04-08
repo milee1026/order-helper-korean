@@ -8,6 +8,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { auth } from '@/lib/firebase';
+import { clearFirestoreSession, connectFirestoreSession } from '@/lib/firestoreSync';
 import LoginScreen from './pages/LoginScreen';
 import Index from './pages/Index.tsx';
 import NotFound from './pages/NotFound.tsx';
@@ -16,6 +17,8 @@ const queryClient = new QueryClient();
 
 function AppShell() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [syncReady, setSyncReady] = useState(false);
+  const userId = user?.uid ?? null;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
@@ -24,6 +27,41 @@ function AppShell() {
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let cleanup: (() => void) | null = null;
+
+    if (!userId) {
+      setSyncReady(false);
+      void clearFirestoreSession();
+      return () => {
+        cancelled = true;
+        cleanup?.();
+      };
+    }
+
+    setSyncReady(false);
+    void connectFirestoreSession(userId)
+      .then((unsubscribe) => {
+        if (cancelled) {
+          unsubscribe();
+          return;
+        }
+        cleanup = unsubscribe;
+        setSyncReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSyncReady(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, [userId]);
 
   if (user === undefined) {
     return (
@@ -35,6 +73,14 @@ function AppShell() {
 
   if (!user) {
     return <LoginScreen />;
+  }
+
+  if (!syncReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-sm text-muted-foreground">
+        데이터 불러오는 중...
+      </div>
+    );
   }
 
   return <Index />;

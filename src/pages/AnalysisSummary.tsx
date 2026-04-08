@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { loadRecords, loadSettings } from '@/utils/storage';
+import { useRecords, useSettings } from '@/utils/storage';
 import { computeAnalysis, filterRecordsByWeeks } from '@/utils/analysis';
 import { DAY_NAMES_KR } from '@/config/ordering';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
 
 export function AnalysisSummary() {
-  const settings = loadSettings();
-  const allRecords = loadRecords();
+  const settings = useSettings();
+  const allRecords = useRecords();
   const [weeks, setWeeks] = useState<2 | 4>(settings.trackingWeeks);
   const [filterVendor, setFilterVendor] = useState<string>('all');
 

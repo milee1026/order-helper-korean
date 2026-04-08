@@ -1,4 +1,5 @@
-﻿import { AutomationItemData, AutomationRecord, RecorderType } from '@/types';
+import { AutomationItemData, AutomationRecord, RecorderType } from '@/types';
+import { replaceAutomationRecordsInFirestore } from '@/lib/firestoreSync';
 
 const AUTO_RECORDS_KEY = 'automation-records';
 
@@ -61,7 +62,9 @@ export function loadAutomationRecords(): AutomationRecord[] {
       localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(normalized));
     }
     return normalized;
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 function loadAutomationDrafts(): Record<string, AutomationDraft> {
@@ -69,19 +72,25 @@ function loadAutomationDrafts(): Record<string, AutomationDraft> {
 }
 
 export function saveAutomationRecords(records: AutomationRecord[]) {
+  const normalized = records.map(normalizeAutomationRecord);
+  localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(normalized));
+  void replaceAutomationRecordsInFirestore(normalized);
+}
+
+export function replaceAutomationRecordsFromRemote(records: AutomationRecord[]) {
   localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(records.map(normalizeAutomationRecord)));
 }
 
 export function addAutomationRecord(record: AutomationRecord) {
   const records = loadAutomationRecords();
-  const idx = records.findIndex(r => r.id === record.id);
+  const idx = records.findIndex((r) => r.id === record.id);
   if (idx >= 0) records[idx] = record;
   else records.push(record);
   saveAutomationRecords(records);
 }
 
 export function getAutomationRecordsByDate(date: string, vendor?: string): AutomationRecord[] {
-  return loadAutomationRecords().filter(r => r.date === date && (!vendor || r.vendor === vendor));
+  return loadAutomationRecords().filter((r) => r.date === date && (!vendor || r.vendor === vendor));
 }
 
 export function loadAutomationDraft(date: string, vendor: string): AutomationDraft | null {
@@ -101,4 +110,3 @@ export function deleteAutomationDraft(date: string, vendor: string) {
   delete next[draftKey(date, vendor)];
   automationDraftsCache = next;
 }
-

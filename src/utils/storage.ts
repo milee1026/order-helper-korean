@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 import type { AppSettings, DailyRecord, ItemData, RecorderType } from '@/types';
+import { replaceRecordsInFirestore, replaceSettingsInFirestore } from '@/lib/firestoreSync';
 
 const RECORDS_KEY = 'inventory-records';
 const SETTINGS_KEY = 'inventory-settings';
@@ -127,6 +128,7 @@ export function saveRecords(records: DailyRecord[]) {
   recordsCache = records.map(normalizeRecord);
   writeJson(RECORDS_KEY, recordsCache);
   emit(recordListeners);
+  void replaceRecordsInFirestore(recordsCache);
 }
 
 export function addRecord(record: DailyRecord) {
@@ -167,6 +169,7 @@ export function saveSettings(settings: AppSettings) {
   settingsCache = normalizeSettings(settings);
   writeJson(SETTINGS_KEY, settingsCache);
   emit(settingsListeners);
+  void replaceSettingsInFirestore(settingsCache);
 }
 
 export function saveDraft(date: string, vendor: string, draft: DraftData) {

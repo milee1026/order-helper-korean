@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { loadRecords, deleteRecord } from '@/utils/storage';
+import React, { useMemo } from 'react';
+import { useRecords, deleteRecord } from '@/utils/storage';
 import { getItemById } from '@/config/items';
 import { DAY_NAMES_KR } from '@/config/ordering';
 import { Button } from '@/components/ui/button';
@@ -8,19 +8,18 @@ import { CollapsibleSection } from '@/components/CollapsibleSection';
 
 export function RecordHistory() {
   const { toast } = useToast();
-  const [records, setRecords] = useState(() => loadRecords());
+  const records = useRecords();
   const [filterVendor, setFilterVendor] = useState<string>('all');
 
   const filtered = useMemo(() => {
     let r = records;
     if (filterVendor !== 'all') r = r.filter(rec => rec.vendor === filterVendor);
-    return r.sort((a, b) => b.date.localeCompare(a.date));
+    return [...r].sort((a, b) => b.date.localeCompare(a.date));
   }, [records, filterVendor]);
 
   const handleDelete = (id: string) => {
     if (!confirm('이 기록을 삭제하시겠습니까?')) return;
     deleteRecord(id);
-    setRecords(loadRecords());
     toast({ title: '삭제 완료' });
   };
 

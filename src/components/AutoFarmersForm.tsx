@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { AutomationItemData, AppSettings } from '@/types';
+import { AutomationItemData, AppSettings, DailyRecord } from '@/types';
 import { Input } from '@/components/ui/input';
 import { RatioSelector } from '@/components/RatioSelector';
 import { computeRecommendedOrder, getStockStatus } from '@/utils/recommendations';
-import { loadRecords } from '@/utils/storage';
+import { useRecords } from '@/utils/storage';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getOrderUnit, getStockUnit, fmtWithUnit, normalizeOrderQuantity } from '@/utils/itemUnits';
 
@@ -21,9 +21,8 @@ function toRatioValue(value: string | number | undefined | null): number | null 
   return value === undefined || value === null || value === '' ? null : Number(value);
 }
 
-function useBroccoliAvgPerKg(): number | null {
+function useBroccoliAvgPerKg(records: DailyRecord[]): number | null {
   return useMemo(() => {
-    const records = loadRecords();
     let totalKg = 0, totalCount = 0;
     for (const r of records) {
       if (r.vendor !== 'farmers') continue;
@@ -34,7 +33,7 @@ function useBroccoliAvgPerKg(): number | null {
       if (kg > 0 && count > 0) { totalKg += kg; totalCount += count; }
     }
     return totalKg > 0 && totalCount > 0 ? Math.round((totalCount / totalKg) * 10) / 10 : null;
-  }, []);
+  }, [records]);
 }
 
 function getAutoItem(data: Record<string, AutomationItemData>, id: string, rec: { defaultOrderCandidate: number; minThresholdCandidate: number } | undefined): AutomationItemData {
@@ -60,7 +59,8 @@ function StatusBadge({ status }: { status: string }) {
 
 export function AutoFarmersForm({ data, onChange, recommendations, showInbound = true }: Props) {
   const isMobile = useIsMobile();
-  const broccoliAvg = useBroccoliAvgPerKg();
+  const records = useRecords();
+  const broccoliAvg = useBroccoliAvgPerKg(records);
 
   const updateVal = (id: string, key: string, val: string | number) => {
     const rec = recommendations[id];

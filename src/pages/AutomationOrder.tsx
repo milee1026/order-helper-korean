@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Vendor, RecorderType, AutomationItemData, AutomationRecord } from '@/types';
 import { getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
-import { loadRecords, loadSettings } from '@/utils/storage';
+import { useRecords, useSettings } from '@/utils/storage';
 import { getRecommendations } from '@/utils/recommendations';
 import { addAutomationRecord, deleteAutomationDraft, getAutomationRecordsByDate, loadAutomationDraft, saveAutomationDraft } from '@/utils/automationStorage';
 import { getItemsByVendor } from '@/config/items';
@@ -19,7 +19,7 @@ const EXCEPTION_REASONS = ['업체 휴무', '공휴일', '배송 변경', '기�
 export function AutomationOrder() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const settings = loadSettings();
+  const settings = useSettings();
   const today = getKstDateString();
 
   const [date, setDate] = useState(today);
@@ -42,7 +42,7 @@ export function AutomationOrder() {
   const showInbound = shouldShowInbound(vendor, dayOfWeek, exceptionNoDelivery);
 
   // Load historical records for recommendations
-  const records = useMemo(() => loadRecords(), []);
+  const records = useRecords();
   const recommendations = useMemo(
     () => getRecommendations(records, vendor, dayOfWeek, settings),
     [records, vendor, dayOfWeek, settings]
