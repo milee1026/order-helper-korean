@@ -98,7 +98,8 @@ export function getStockUnit(itemId: string): string {
 
 /** Format a value with its unit, returns '-' if value is falsy */
 export function fmtWithUnit(val: number | undefined, unit: string): string {
-  if (val === undefined || val === null) return '-';
+  if (val === undefined || val === null || !val) return '-';
   const rounded = Math.round(val * 100) / 100;
+  if (unit.includes('/')) return `${rounded}(${unit})`;
   return `${rounded}${unit}`;
 }
