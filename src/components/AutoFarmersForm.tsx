@@ -13,10 +13,13 @@ interface Props {
   recommendations: Record<string, { defaultOrderCandidate: number; minThresholdCandidate: number }>;
   settings: AppSettings;
   showInbound?: boolean;
-  autoInbound?: Record<string, number>;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+function toRatioValue(value: string | number | undefined | null): number | null {
+  return value === undefined || value === null || value === '' ? null : Number(value);
+}
 
 function useBroccoliAvgPerKg(): number | null {
   return useMemo(() => {
@@ -37,10 +40,17 @@ function useBroccoliAvgPerKg(): number | null {
 function getAutoItem(data: Record<string, AutomationItemData>, id: string, rec: { defaultOrderCandidate: number; minThresholdCandidate: number } | undefined): AutomationItemData {
   return data[id] || {
     itemId: id, currentStock: 0, currentStockValues: {},
-    inboundRef: 0, defaultOrderCandidate: rec?.defaultOrderCandidate || 0,
-    minThresholdCandidate: rec?.minThresholdCandidate || 0,
+    inboundRef: '', defaultOrderCandidate: 0,
+    minThresholdCandidate: 0,
     recommendedOrder: 0, finalOrder: 0, memo: '',
   };
+}
+
+function hasItemInput(data: AutomationItemData): boolean {
+  return Object.values(data.currentStockValues || {}).some(value => value !== '' && value !== null && value !== undefined)
+    || data.inboundRef !== ''
+    || data.finalOrder !== 0
+    || data.memo !== '';
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -48,7 +58,7 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`text-xs font-medium ${color}`}>{status}</span>;
 }
 
-export function AutoFarmersForm({ data, onChange, recommendations, showInbound = true, autoInbound = {} }: Props) {
+export function AutoFarmersForm({ data, onChange, recommendations, showInbound = true }: Props) {
   const isMobile = useIsMobile();
   const broccoliAvg = useBroccoliAvgPerKg();
 
@@ -69,7 +79,7 @@ export function AutoFarmersForm({ data, onChange, recommendations, showInbound =
       defaultOrderCandidate: defOrd,
       minThresholdCandidate: minThr,
       recommendedOrder: recommended,
-      finalOrder: current.finalOrder || recommended,
+      finalOrder: current.finalOrder,
     });
   };
 
@@ -147,7 +157,7 @@ export function AutoFarmersForm({ data, onChange, recommendations, showInbound =
         {items.map(item => {
           const rec = recommendations[item.id];
           const d = getAutoItem(data, item.id, rec);
-          const status = getStockStatus(d.currentStock, d.minThresholdCandidate);
+          const status = hasItemInput(d) ? getStockStatus(d.currentStock, d.minThresholdCandidate) : '-';
           return (
             <div key={item.id} className="border rounded bg-background">
               <div className="px-3 py-1.5 bg-muted/30 border-b flex items-center justify-between">
@@ -162,7 +172,7 @@ export function AutoFarmersForm({ data, onChange, recommendations, showInbound =
                   f.type === 'ratio' ? (
                     <div key={f.key} className="flex items-center justify-between gap-2 text-xs">
                       <span className="text-muted-foreground">{f.label}</span>
-                      <RatioSelector value={Number(d.currentStockValues[f.key]) || 0} onChange={v => updateVal(item.id, f.key, v)} />
+                      <RatioSelector value={toRatioValue(d.currentStockValues[f.key])} onChange={v => updateVal(item.id, f.key, v)} />
                     </div>
                   ) : (
                     <label key={f.key} className="flex items-center justify-between gap-2 text-xs">
@@ -174,7 +184,7 @@ export function AutoFarmersForm({ data, onChange, recommendations, showInbound =
                 {showInbound && (
                   <label className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">{item.inboundLabel} <span className="text-orange-500">(참고)</span></span>
-                    <Input type="number" min="0" className="w-20 h-8 text-sm px-2" value={d.inboundRef ?? (autoInbound[item.id] || '')} onChange={e => updateInbound(item.id, e.target.value)} />
+                    <Input type="number" min="0" className="w-20 h-8 text-sm px-2" value={d.inboundRef ?? ''} onChange={e => updateInbound(item.id, e.target.value)} />
                   </label>
                 )}
                 {showInbound && item.id === 'f-broccoli' && item.extraInbound && (
@@ -184,10 +194,10 @@ export function AutoFarmersForm({ data, onChange, recommendations, showInbound =
                   </label>
                 )}
                 <div className="bg-muted/50 rounded p-2 space-y-1 text-xs">
-                  <div className="flex justify-between"><span className="text-muted-foreground">{item.stockLabel}</span><b>{d.currentStock ? round2(d.currentStock) : '-'}</b></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">평균발주량</span><span>{fmtWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id))}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">최소재고량</span><span>{fmtWithUnit(d.minThresholdCandidate, getStockUnit(item.id))}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">추천 발주량</span><b className="text-primary">{fmtWithUnit(d.recommendedOrder, getOrderUnit(item.id))}</b></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{item.stockLabel}</span><b>{hasItemInput(d) ? round2(d.currentStock) : '-'}</b></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">평균발주량</span><span>{hasItemInput(d) ? fmtWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id)) : '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">최소재고량</span><span>{hasItemInput(d) ? fmtWithUnit(d.minThresholdCandidate, getStockUnit(item.id)) : '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">추천 발주량</span><b className="text-primary">{hasItemInput(d) ? fmtWithUnit(d.recommendedOrder, getOrderUnit(item.id)) : '-'}</b></div>
                 </div>
                 <label className="flex items-center justify-between gap-2 text-xs">
                   <span className="font-medium">최종 발주량({getOrderUnit(item.id)})</span>
@@ -230,7 +240,7 @@ export function AutoFarmersForm({ data, onChange, recommendations, showInbound =
           {items.map(item => {
             const rec = recommendations[item.id];
             const d = getAutoItem(data, item.id, rec);
-            const status = getStockStatus(d.currentStock, d.minThresholdCandidate);
+            const status = hasItemInput(d) ? getStockStatus(d.currentStock, d.minThresholdCandidate) : '-';
             return (
               <tr key={item.id} className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
@@ -243,7 +253,7 @@ export function AutoFarmersForm({ data, onChange, recommendations, showInbound =
                       f.type === 'ratio' ? (
                         <div key={f.key} className="flex items-center gap-1">
                           <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
-                          <RatioSelector value={Number(d.currentStockValues[f.key]) || 0} onChange={v => updateVal(item.id, f.key, v)} />
+                          <RatioSelector value={toRatioValue(d.currentStockValues[f.key])} onChange={v => updateVal(item.id, f.key, v)} />
                         </div>
                       ) : (
                         <label key={f.key} className="flex items-center gap-1">
@@ -256,19 +266,19 @@ export function AutoFarmersForm({ data, onChange, recommendations, showInbound =
                 </td>
                 <td className="border px-1 py-1 text-center">
                   {showInbound ? (
-                    <Input type="number" min="0" className="w-12 h-6 text-xs px-1 mx-auto" value={d.inboundRef ?? (autoInbound[item.id] || '')} onChange={e => updateInbound(item.id, e.target.value)} />
+                    <Input type="number" min="0" className="w-12 h-6 text-xs px-1 mx-auto" value={d.inboundRef ?? ''} onChange={e => updateInbound(item.id, e.target.value)} />
                   ) : (
                     <span className="text-muted-foreground text-xs">-</span>
                   )}
                 </td>
                 <td className="border px-1 py-1 text-center font-mono">
                   <div className="text-muted-foreground" style={{ fontSize: '9px' }}>{item.stockLabel}</div>
-                  <b>{d.currentStock ? round2(d.currentStock) : '-'}</b>
+                  <b>{hasItemInput(d) ? round2(d.currentStock) : '-'}</b>
                 </td>
                 <td className="border px-1 py-1 text-center"><StatusBadge status={status} /></td>
-                <td className="border px-1 py-1 text-center font-mono">{fmtWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id))}</td>
-                <td className="border px-1 py-1 text-center font-mono">{fmtWithUnit(d.minThresholdCandidate, getStockUnit(item.id))}</td>
-                <td className="border px-1 py-1 text-center font-mono font-medium text-primary">{fmtWithUnit(d.recommendedOrder, getOrderUnit(item.id))}</td>
+                <td className="border px-1 py-1 text-center font-mono">{hasItemInput(d) ? fmtWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id)) : '-'}</td>
+                <td className="border px-1 py-1 text-center font-mono">{hasItemInput(d) ? fmtWithUnit(d.minThresholdCandidate, getStockUnit(item.id)) : '-'}</td>
+                <td className="border px-1 py-1 text-center font-mono font-medium text-primary">{hasItemInput(d) ? fmtWithUnit(d.recommendedOrder, getOrderUnit(item.id)) : '-'}</td>
                 <td className="border px-1 py-1 text-center">
                   <Input type="number" min="0" className="w-14 h-6 text-xs px-1 border-primary mx-auto" value={d.finalOrder || ''} onChange={e => updateFinal(item.id, Number(e.target.value.replace(/-/g, '')) || 0)} />
                 </td>

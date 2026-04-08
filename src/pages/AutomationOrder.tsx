@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Vendor, RecorderType, AutomationItemData, AutomationRecord } from '@/types';
-import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
+import { getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { loadRecords, loadSettings } from '@/utils/storage';
-import { getRecommendations, computeRecommendedOrder } from '@/utils/recommendations';
-import { addAutomationRecord, getAutomationRecordsByDate } from '@/utils/automationStorage';
-import { normalizeOrderQuantity } from '@/utils/itemUnits';
-import { getItemsByVendor, FARMERS_ITEMS, MARKETBOM_ITEMS } from '@/config/items';
-import { shouldShowInbound, getAutoInboundFromPrevOrder } from '@/utils/inboundLogic';
+import { getRecommendations } from '@/utils/recommendations';
+import { addAutomationRecord, deleteAutomationDraft, getAutomationRecordsByDate, loadAutomationDraft, saveAutomationDraft } from '@/utils/automationStorage';
+import { getItemsByVendor } from '@/config/items';
+import { shouldShowInbound } from '@/utils/inboundLogic';
 import { AutoFarmersForm } from '@/components/AutoFarmersForm';
 import { AutoMarketbomForm } from '@/components/AutoMarketbomForm';
 import { Button } from '@/components/ui/button';
@@ -28,10 +27,8 @@ export function AutomationOrder() {
   const [autoItems, setAutoItems] = useState<Record<string, AutomationItemData>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Editable cover days
   const dayOfWeek = getDayOfWeek(date);
-  const defaultCoverDays = getCoverDays(vendor, dayOfWeek);
-  const [coverDaysInput, setCoverDaysInput] = useState(defaultCoverDays);
+  const [coverDaysInput, setCoverDaysInput] = useState('');
 
   // Exception schedule
   const [exceptionNoDelivery, setExceptionNoDelivery] = useState(false);
@@ -43,12 +40,6 @@ export function AutomationOrder() {
   // Inbound visibility
   const showInbound = shouldShowInbound(vendor, dayOfWeek, exceptionNoDelivery);
 
-  // Auto inbound from previous order
-  const autoInbound = useMemo(() => {
-    if (!showInbound) return {};
-    return getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
-  }, [date, vendor, dayOfWeek, showInbound]);
-
   // Load historical records for recommendations
   const records = useMemo(() => loadRecords(), []);
   const recommendations = useMemo(
@@ -56,17 +47,20 @@ export function AutomationOrder() {
     [records, vendor, dayOfWeek, settings]
   );
 
-  // Reset cover days when date/vendor changes
   useEffect(() => {
-    const newDefault = getCoverDays(vendor, getDayOfWeek(date));
-    setCoverDaysInput(newDefault);
-    setExceptionNoDelivery(false);
-    setExceptionReason('');
-  }, [date, vendor]);
-
-  // Load existing automation record for this date+vendor
-  useEffect(() => {
+    const draft = loadAutomationDraft(date, vendor);
     const existing = getAutomationRecordsByDate(date, vendor);
+
+    if (draft) {
+      setAutoItems(draft.autoItems);
+      setRecorder(draft.recorder);
+      setCoverDaysInput(draft.coverDaysInput);
+      setExceptionNoDelivery(draft.exceptionNoDelivery);
+      setExceptionReason(draft.exceptionReason);
+      setEditingId(existing.length > 0 ? existing[0].id : null);
+      return;
+    }
+
     if (existing.length > 0) {
       const rec = existing[0];
       const dataMap: Record<string, AutomationItemData> = {};
@@ -74,37 +68,35 @@ export function AutomationOrder() {
       setAutoItems(dataMap);
       setEditingId(rec.id);
       setRecorder(rec.recorderType);
-      // Restore saved cover days if present
       if (rec.coverDays && rec.coverDays.length > 0) {
         setCoverDaysInput(rec.coverDays.join(','));
-      }
-    } else {
-      // Auto-fill inbound for new records
-      if (showInbound && Object.keys(autoInbound).length > 0) {
-        const prefilled: Record<string, AutomationItemData> = {};
-        for (const [itemId, qty] of Object.entries(autoInbound)) {
-          prefilled[itemId] = {
-            itemId,
-            currentStock: 0,
-            currentStockValues: {},
-            inboundRef: qty,
-            defaultOrderCandidate: recommendations[itemId]?.defaultOrderCandidate || 0,
-            minThresholdCandidate: recommendations[itemId]?.minThresholdCandidate || 0,
-            recommendedOrder: 0,
-            finalOrder: 0,
-            memo: '',
-          };
-        }
-        setAutoItems(prefilled);
       } else {
-        setAutoItems({});
+        setCoverDaysInput('');
       }
+      setExceptionNoDelivery(false);
+      setExceptionReason('');
+    } else {
+      setAutoItems({});
       setEditingId(null);
+      setRecorder('manager');
+      setCoverDaysInput('');
+      setExceptionNoDelivery(false);
+      setExceptionReason('');
     }
   }, [date, vendor]);
 
   const handleItemChange = (itemId: string, data: AutomationItemData) => {
-    setAutoItems(prev => ({ ...prev, [itemId]: data }));
+    setAutoItems(prev => {
+      const next = { ...prev, [itemId]: data };
+      saveAutomationDraft(date, vendor, {
+        autoItems: next,
+        recorder,
+        coverDaysInput,
+        exceptionNoDelivery,
+        exceptionReason,
+      });
+      return next;
+    });
   };
 
   const handleSave = () => {
@@ -112,15 +104,13 @@ export function AutomationOrder() {
     const recordItems: AutomationItemData[] = items.map(cfg => {
       const d = autoItems[cfg.id];
       if (!d) {
-        const recData = recommendations[cfg.id];
-        const defOrd = normalizeOrderQuantity(cfg.id, recData?.defaultOrderCandidate || 0);
         return {
           itemId: cfg.id,
           currentStock: 0,
           currentStockValues: {},
-          inboundRef: 0,
-          defaultOrderCandidate: defOrd,
-          minThresholdCandidate: recData?.minThresholdCandidate || 0,
+          inboundRef: '',
+          defaultOrderCandidate: 0,
+          minThresholdCandidate: 0,
           recommendedOrder: 0,
           finalOrder: 0,
           memo: '',
@@ -141,6 +131,7 @@ export function AutomationOrder() {
       type: 'automation',
     };
     addAutomationRecord(record);
+    deleteAutomationDraft(date, vendor);
     setEditingId(record.id);
     toast({ title: '저장 완료', description: `${date} ${vendor === 'farmers' ? '파머스' : '마켓봄'} 자동화 발주 기록이 저장되었습니다.` });
   };
@@ -162,7 +153,21 @@ export function AutomationOrder() {
         </label>
         <label className="flex items-center gap-1 text-xs">
           <span className="text-muted-foreground">기록자</span>
-          <select className="h-7 border rounded px-2 text-xs bg-background" value={recorder} onChange={e => setRecorder(e.target.value as RecorderType)}>
+          <select
+            className="h-7 border rounded px-2 text-xs bg-background"
+            value={recorder}
+            onChange={e => {
+              const nextRecorder = e.target.value as RecorderType;
+              setRecorder(nextRecorder);
+              saveAutomationDraft(date, vendor, {
+                autoItems,
+                recorder: nextRecorder,
+                coverDaysInput,
+                exceptionNoDelivery,
+                exceptionReason,
+              });
+            }}
+          >
             <option value="manager">매니저</option>
             <option value="staff">스태프</option>
           </select>
@@ -185,21 +190,36 @@ export function AutomationOrder() {
           <Input
             className="h-7 text-xs w-40"
             value={coverDaysInput}
-            onChange={e => setCoverDaysInput(e.target.value)}
+            onChange={e => {
+              const nextCoverDays = e.target.value;
+              setCoverDaysInput(nextCoverDays);
+              saveAutomationDraft(date, vendor, {
+                autoItems,
+                recorder,
+                coverDaysInput: nextCoverDays,
+                exceptionNoDelivery,
+                exceptionReason,
+              });
+            }}
             placeholder="예: 월,화,수"
           />
-          {coverDaysInput !== defaultCoverDays && (
-            <Button variant="ghost" size="sm" className="h-6 text-xs px-1 text-muted-foreground" onClick={() => setCoverDaysInput(defaultCoverDays)}>
-              초기화
-            </Button>
-          )}
         </label>
 
         <label className="flex items-center gap-1 text-xs">
           <input
             type="checkbox"
             checked={exceptionNoDelivery}
-            onChange={e => setExceptionNoDelivery(e.target.checked)}
+            onChange={e => {
+              const nextException = e.target.checked;
+              setExceptionNoDelivery(nextException);
+              saveAutomationDraft(date, vendor, {
+                autoItems,
+                recorder,
+                coverDaysInput,
+                exceptionNoDelivery: nextException,
+                exceptionReason,
+              });
+            }}
             className="rounded"
           />
           <span className="text-muted-foreground">오늘 입고 없음 (예외)</span>
@@ -208,7 +228,21 @@ export function AutomationOrder() {
         {exceptionNoDelivery && (
           <label className="flex items-center gap-1 text-xs">
             <span className="text-muted-foreground">사유:</span>
-            <select className="h-7 border rounded px-2 text-xs bg-background" value={exceptionReason} onChange={e => setExceptionReason(e.target.value)}>
+            <select
+              className="h-7 border rounded px-2 text-xs bg-background"
+              value={exceptionReason}
+              onChange={e => {
+                const nextReason = e.target.value;
+                setExceptionReason(nextReason);
+                saveAutomationDraft(date, vendor, {
+                  autoItems,
+                  recorder,
+                  coverDaysInput,
+                  exceptionNoDelivery,
+                  exceptionReason: nextReason,
+                });
+              }}
+            >
               <option value="">선택</option>
               {EXCEPTION_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
@@ -228,7 +262,6 @@ export function AutomationOrder() {
           recommendations={recommendations}
           settings={settings}
           showInbound={showInbound}
-          autoInbound={autoInbound}
         />
       ) : (
         <AutoMarketbomForm
@@ -237,7 +270,6 @@ export function AutomationOrder() {
           recommendations={recommendations}
           settings={settings}
           showInbound={showInbound}
-          autoInbound={autoInbound}
         />
       )}
 

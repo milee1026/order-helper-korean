@@ -34,6 +34,10 @@ function useBroccoliAvgPerKg(): number | null {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+function toRatioValue(value: string | number | undefined | null): number | null {
+  return value === undefined || value === null || value === '' ? null : Number(value);
+}
+
 export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormProps) {
   const getItem = (id: string): ItemData => data[id] || { itemId: id, values: {}, inbound: '', order: '', memo: '' };
   const isMobile = useIsMobile();
@@ -56,7 +60,7 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
 
   const sd = getItem('f-salad');
   const sdUnused = Number(sd.values.unusedPortioned) || 0;
-  const sdRatio = Number(sd.values.usedRatio) || 0;
+  const sdRatio = toRatioValue(sd.values.usedRatio);
   const sdUnport = Number(sd.values.unportioned) || 0;
   const sdTotal = sdUnused + sdRatio + sdUnport;
   const sdOrderKg = Number(sd.values.orderKg) || 0;
@@ -65,7 +69,7 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
 
   const bd = getItem('f-broccoli');
   const bdUnused = Number(bd.values.unusedBlanched) || 0;
-  const bdRatio = Number(bd.values.usedBlanchedRatio) || 0;
+  const bdRatio = toRatioValue(bd.values.usedBlanchedRatio);
   const bdPrepped = Number(bd.values.prepped) || 0;
   const bdUntrimmed = Number(bd.values.untrimmed) || 0;
   const bdUntrimmedConv = bdUntrimmed / 4;
@@ -74,7 +78,7 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
 
   const pd = getItem('f-paprika');
   const pdUnused = Number(pd.values.unusedPrepped) || 0;
-  const pdRatio = Number(pd.values.usedRatio) || 0;
+  const pdRatio = toRatioValue(pd.values.usedRatio);
   const pdUntrimmedKg = Number(pd.values.untrimmedKg) || 0;
   const pdUntrimmedConv = (pdUntrimmedKg / 5) * 3;
   const pdTotal = pdUnused + pdRatio + pdUntrimmedConv;
@@ -82,7 +86,7 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
 
   const cd = getItem('f-chive');
   const cdUnused = Number(cd.values.unusedPortioned) || 0;
-  const cdRatio = Number(cd.values.usedRatio) || 0;
+  const cdRatio = toRatioValue(cd.values.usedRatio);
   const cdUnportBags = Number(cd.values.unportionedBags) || 0;
   const cdUnportConv = cdUnportBags * 2;
   const cdTotal = cdUnused + cdRatio + cdUnportConv;
@@ -385,7 +389,7 @@ function MobileNumField({ label, value, onChange }: { label: string; value: stri
   );
 }
 
-function MobileRatioField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+function MobileRatioField({ label, value, onChange }: { label: string; value: number | null; onChange: (v: number) => void }) {
   return (
     <div className="flex items-center justify-between gap-2 text-xs">
       <span className="text-muted-foreground">{label}</span>

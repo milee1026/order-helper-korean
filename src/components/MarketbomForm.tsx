@@ -14,6 +14,10 @@ interface MarketbomFormProps {
   showInbound?: boolean;
 }
 
+function toRatioValue(value: string | number | undefined | null): number | null {
+  return value === undefined || value === null || value === '' ? null : Number(value);
+}
+
 export function MarketbomForm({ data, onChange, settings, showInbound = true }: MarketbomFormProps) {
   const getItem = (id: string): ItemData => data[id] || { itemId: id, values: {}, inbound: '', order: '', memo: '' };
   const isMobile = useIsMobile();
@@ -167,7 +171,7 @@ function MobileFieldInput({ field, value, onChange }: {
     return (
       <div className="flex items-center justify-between gap-2 text-xs">
         <span className="text-muted-foreground">{field.label}</span>
-        <RatioSelector value={Number(value) || 0} onChange={onChange} />
+        <RatioSelector value={toRatioValue(value)} onChange={onChange} />
       </div>
     );
   }
@@ -198,7 +202,7 @@ function FieldInput({ field, value, onChange, unitDesc }: {
     return (
       <div className="flex items-center gap-1">
         <span className="text-muted-foreground whitespace-nowrap">{field.label}</span>
-        <RatioSelector value={Number(value) || 0} onChange={onChange} />
+        <RatioSelector value={toRatioValue(value)} onChange={onChange} />
       </div>
     );
   }
