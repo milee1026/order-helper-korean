@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRecords, deleteRecord } from '@/utils/storage';
 import { getItemById } from '@/config/items';
 import { DAY_NAMES_KR } from '@/config/ordering';
