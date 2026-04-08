@@ -12,6 +12,8 @@ interface Props {
   onChange: (itemId: string, data: AutomationItemData) => void;
   recommendations: Record<string, { defaultOrderCandidate: number; minThresholdCandidate: number }>;
   settings: AppSettings;
+  showInbound?: boolean;
+  autoInbound?: Record<string, number>;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
