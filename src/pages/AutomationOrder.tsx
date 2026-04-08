@@ -4,6 +4,7 @@ import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config
 import { loadRecords, loadSettings } from '@/utils/storage';
 import { getRecommendations, computeRecommendedOrder } from '@/utils/recommendations';
 import { addAutomationRecord, getAutomationRecordsByDate } from '@/utils/automationStorage';
+import { normalizeOrderQuantity } from '@/utils/itemUnits';
 import { getItemsByVendor, FARMERS_ITEMS, MARKETBOM_ITEMS } from '@/config/items';
 import { AutoFarmersForm } from '@/components/AutoFarmersForm';
 import { AutoMarketbomForm } from '@/components/AutoMarketbomForm';
@@ -61,14 +62,15 @@ export function AutomationOrder() {
     const recordItems: AutomationItemData[] = items.map(cfg => {
       const d = autoItems[cfg.id];
       if (!d) {
-        const rec = recommendations[cfg.id];
+        const recData = recommendations[cfg.id];
+        const defOrd = normalizeOrderQuantity(cfg.id, recData?.defaultOrderCandidate || 0);
         return {
           itemId: cfg.id,
           currentStock: 0,
           currentStockValues: {},
           inboundRef: 0,
-          defaultOrderCandidate: rec?.defaultOrderCandidate || 0,
-          minThresholdCandidate: rec?.minThresholdCandidate || 0,
+          defaultOrderCandidate: defOrd,
+          minThresholdCandidate: recData?.minThresholdCandidate || 0,
           recommendedOrder: 0,
           finalOrder: 0,
           memo: '',
