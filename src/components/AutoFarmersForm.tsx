@@ -5,6 +5,7 @@ import { RatioSelector } from '@/components/RatioSelector';
 import { computeRecommendedOrder, getStockStatus } from '@/utils/recommendations';
 import { loadRecords } from '@/utils/storage';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getOrderUnit, getStockUnit, fmtWithUnit } from '@/utils/itemUnits';
 
 interface Props {
   data: Record<string, AutomationItemData>;
@@ -179,12 +180,12 @@ export function AutoFarmersForm({ data, onChange, recommendations }: Props) {
                 )}
                 <div className="bg-muted/50 rounded p-2 space-y-1 text-xs">
                   <div className="flex justify-between"><span className="text-muted-foreground">{item.stockLabel}</span><b>{d.currentStock ? round2(d.currentStock) : '-'}</b></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">평균발주량</span><span>{d.defaultOrderCandidate || '-'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">최소재고량</span><span>{d.minThresholdCandidate ? round2(d.minThresholdCandidate) : '-'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">추천 발주량({item.orderUnit})</span><b className="text-primary">{d.recommendedOrder || '-'}</b></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">평균발주량</span><span>{fmtWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id))}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">최소재고량</span><span>{fmtWithUnit(d.minThresholdCandidate, getStockUnit(item.id))}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">추천 발주량</span><b className="text-primary">{fmtWithUnit(d.recommendedOrder, getOrderUnit(item.id))}</b></div>
                 </div>
                 <label className="flex items-center justify-between gap-2 text-xs">
-                  <span className="font-medium">최종 발주량({item.orderUnit})</span>
+                  <span className="font-medium">최종 발주량({getOrderUnit(item.id)})</span>
                   <Input type="number" min="0" className="w-20 h-8 text-sm px-2 border-primary" value={d.finalOrder || ''} onChange={e => updateFinal(item.id, Number(e.target.value.replace(/-/g, '')) || 0)} />
                 </label>
                 <label className="flex items-center justify-between gap-2 text-xs">
@@ -256,9 +257,9 @@ export function AutoFarmersForm({ data, onChange, recommendations }: Props) {
                   <b>{d.currentStock ? round2(d.currentStock) : '-'}</b>
                 </td>
                 <td className="border px-1 py-1 text-center"><StatusBadge status={status} /></td>
-                <td className="border px-1 py-1 text-center font-mono">{d.defaultOrderCandidate || '-'}</td>
-                <td className="border px-1 py-1 text-center font-mono">{d.minThresholdCandidate ? round2(d.minThresholdCandidate) : '-'}</td>
-                <td className="border px-1 py-1 text-center font-mono font-medium text-primary">{d.recommendedOrder || '-'}</td>
+                <td className="border px-1 py-1 text-center font-mono">{fmtWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id))}</td>
+                <td className="border px-1 py-1 text-center font-mono">{fmtWithUnit(d.minThresholdCandidate, getStockUnit(item.id))}</td>
+                <td className="border px-1 py-1 text-center font-mono font-medium text-primary">{fmtWithUnit(d.recommendedOrder, getOrderUnit(item.id))}</td>
                 <td className="border px-1 py-1 text-center">
                   <Input type="number" min="0" className="w-14 h-6 text-xs px-1 border-primary mx-auto" value={d.finalOrder || ''} onChange={e => updateFinal(item.id, Number(e.target.value.replace(/-/g, '')) || 0)} />
                 </td>
