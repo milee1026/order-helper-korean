@@ -1,7 +1,6 @@
 import { AutomationItemData, AutomationRecord, RecorderType } from '@/types';
 
 const AUTO_RECORDS_KEY = 'automation-records';
-const AUTO_DRAFTS_KEY = 'automation-drafts';
 
 export interface AutomationDraft {
   autoItems: Record<string, AutomationItemData>;
@@ -10,6 +9,8 @@ export interface AutomationDraft {
   exceptionNoDelivery: boolean;
   exceptionReason: string;
 }
+
+let automationDraftsCache: Record<string, AutomationDraft> = {};
 
 function draftKey(date: string, vendor: string): string {
   return `${date}__${vendor}`;
@@ -23,12 +24,7 @@ export function loadAutomationRecords(): AutomationRecord[] {
 }
 
 function loadAutomationDrafts(): Record<string, AutomationDraft> {
-  try {
-    const raw = localStorage.getItem(AUTO_DRAFTS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
+  return automationDraftsCache;
 }
 
 export function saveAutomationRecords(records: AutomationRecord[]) {
@@ -52,13 +48,14 @@ export function loadAutomationDraft(date: string, vendor: string): AutomationDra
 }
 
 export function saveAutomationDraft(date: string, vendor: string, draft: AutomationDraft) {
-  const drafts = loadAutomationDrafts();
-  drafts[draftKey(date, vendor)] = draft;
-  localStorage.setItem(AUTO_DRAFTS_KEY, JSON.stringify(drafts));
+  automationDraftsCache = {
+    ...automationDraftsCache,
+    [draftKey(date, vendor)]: draft,
+  };
 }
 
 export function deleteAutomationDraft(date: string, vendor: string) {
-  const drafts = loadAutomationDrafts();
-  delete drafts[draftKey(date, vendor)];
-  localStorage.setItem(AUTO_DRAFTS_KEY, JSON.stringify(drafts));
+  const next = { ...automationDraftsCache };
+  delete next[draftKey(date, vendor)];
+  automationDraftsCache = next;
 }

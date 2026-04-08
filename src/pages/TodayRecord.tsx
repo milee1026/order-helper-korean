@@ -4,6 +4,7 @@ import { getItemsByVendor, FARMERS_ITEMS } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { addRecord, getRecordsByDate, deleteRecord, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
 import { shouldShowInbound } from '@/utils/inboundLogic';
+import { getKstDateString } from '@/utils/date';
 import { FarmersForm } from '@/components/FarmersForm';
 import { MarketbomForm } from '@/components/MarketbomForm';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,7 @@ export function TodayRecord() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const settings = loadSettings();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getKstDateString();
   const [date, setDate] = useState(today);
   const [vendor, setVendor] = useState<Vendor>('farmers');
   const [recorder, setRecorder] = useState<RecorderType>('manager');

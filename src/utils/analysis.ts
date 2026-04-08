@@ -1,5 +1,6 @@
 import { DailyRecord, AppSettings } from '@/types';
 import { getItemById, ALL_ITEMS } from '@/config/items';
+import { getKstDateString, shiftKstDateString } from '@/utils/date';
 
 interface ItemStats {
   itemId: string;
@@ -92,8 +93,6 @@ function mode(arr: number[]): number {
 }
 
 export function filterRecordsByWeeks(records: DailyRecord[], weeks: number): DailyRecord[] {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - weeks * 7);
-  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const cutoffStr = shiftKstDateString(getKstDateString(), -(weeks * 7));
   return records.filter(r => r.date >= cutoffStr);
 }

@@ -6,6 +6,7 @@ import { getRecommendations } from '@/utils/recommendations';
 import { addAutomationRecord, deleteAutomationDraft, getAutomationRecordsByDate, loadAutomationDraft, saveAutomationDraft } from '@/utils/automationStorage';
 import { getItemsByVendor } from '@/config/items';
 import { shouldShowInbound } from '@/utils/inboundLogic';
+import { getKstDateString } from '@/utils/date';
 import { AutoFarmersForm } from '@/components/AutoFarmersForm';
 import { AutoMarketbomForm } from '@/components/AutoMarketbomForm';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ export function AutomationOrder() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const settings = loadSettings();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getKstDateString();
 
   const [date, setDate] = useState(today);
   const [vendor, setVendor] = useState<Vendor>('farmers');

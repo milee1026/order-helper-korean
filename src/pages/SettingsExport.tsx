@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
 import { useToast } from '@/hooks/use-toast';
+import { getKstDateString } from '@/utils/date';
 
 export function SettingsExport() {
   const { toast } = useToast();
@@ -27,7 +28,7 @@ export function SettingsExport() {
   const handleExportAllCsv = () => {
     const rows = recordsToCsvRows(records);
     const csv = csvRowsToString(rows);
-    downloadCsv(csv, `inventory-data-${new Date().toISOString().split('T')[0]}.csv`);
+    downloadCsv(csv, `inventory-data-${getKstDateString()}.csv`);
     toast({ title: '다운로드 완료', description: `${rows.length}행 CSV 내보내기` });
   };
 
@@ -42,7 +43,7 @@ export function SettingsExport() {
         a.defaultOrderCandidate, a.minThresholdCandidate,
       ].join(','))
     ];
-    downloadCsv(lines.join('\n'), `inventory-analysis-${new Date().toISOString().split('T')[0]}.csv`);
+    downloadCsv(lines.join('\n'), `inventory-analysis-${getKstDateString()}.csv`);
     toast({ title: '분석 CSV 다운로드 완료' });
   };
 

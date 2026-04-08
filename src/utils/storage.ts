@@ -4,7 +4,6 @@ import type { AppSettings, DailyRecord, ItemData, RecorderType } from '@/types';
 
 const RECORDS_KEY = 'inventory-records';
 const SETTINGS_KEY = 'inventory-settings';
-const DRAFT_KEY = 'inventory-drafts';
 
 export interface DraftData {
   itemData: Record<string, ItemData>;
@@ -22,7 +21,7 @@ const draftListeners = new Set<() => void>();
 
 let recordsCache: DailyRecord[] = readJson(RECORDS_KEY, []);
 let settingsCache: AppSettings = normalizeSettings(readJson(SETTINGS_KEY, defaultSettings));
-let draftsCache: Record<string, DraftData> = readJson(DRAFT_KEY, {});
+let draftsCache: Record<string, DraftData> = {};
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -176,7 +175,6 @@ export function saveDraft(date: string, vendor: string, draft: DraftData) {
       ...draftsCache,
       [draftKey(date, vendor)]: draft,
     };
-    writeJson(DRAFT_KEY, draftsCache);
     emit(draftListeners);
   } catch {
     // Ignore draft persistence failures and keep the editor usable.
@@ -192,7 +190,6 @@ export function deleteDraft(date: string, vendor: string) {
     const next = { ...draftsCache };
     delete next[draftKey(date, vendor)];
     draftsCache = next;
-    writeJson(DRAFT_KEY, draftsCache);
     emit(draftListeners);
   } catch {
     // Ignore draft deletion failures.

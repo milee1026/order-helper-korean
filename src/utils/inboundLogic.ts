@@ -1,6 +1,7 @@
 import { loadRecords } from '@/utils/storage';
 import { loadAutomationRecords } from '@/utils/automationStorage';
 import { Vendor } from '@/types';
+import { shiftKstDateString } from '@/utils/date';
 
 /**
  * Determine if inbound field should be shown on a given order day.
@@ -46,13 +47,10 @@ function getPreviousOrderDate(currentDate: string, vendor: Vendor, dayOfWeek: nu
   const prevDay = getPreviousOrderDay(vendor, dayOfWeek);
   if (prevDay === null) return null;
 
-  const current = new Date(currentDate + 'T00:00:00');
   let diff = dayOfWeek - prevDay;
   if (diff <= 0) diff += 7;
 
-  const prevDate = new Date(current);
-  prevDate.setDate(current.getDate() - diff);
-  return prevDate.toISOString().split('T')[0];
+  return shiftKstDateString(currentDate, -diff);
 }
 
 /**
