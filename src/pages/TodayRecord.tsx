@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DailyRecord, ItemData, Vendor, RecorderType } from '@/types';
 import { getItemsByVendor, FARMERS_ITEMS } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { addRecord, getRecordsByDate, deleteRecord, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
+import { shouldShowInbound, getAutoInboundFromPrevOrder } from '@/utils/inboundLogic';
 import { FarmersForm } from '@/components/FarmersForm';
 import { MarketbomForm } from '@/components/MarketbomForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+
+const EXCEPTION_REASONS = ['업체 휴무', '공휴일', '배송 변경', '기타'];
 
 export function TodayRecord() {
   const { toast } = useToast();
@@ -22,9 +25,28 @@ export function TodayRecord() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const dayOfWeek = getDayOfWeek(date);
-  const coverDays = getCoverDays(vendor, dayOfWeek);
+  const defaultCoverDays = getCoverDays(vendor, dayOfWeek);
+  const [coverDaysInput, setCoverDaysInput] = useState(defaultCoverDays);
   const orderDays = getOrderDays(vendor);
   const isOrderDay = orderDays.includes(dayOfWeek);
+
+  // Exception schedule
+  const [exceptionNoDelivery, setExceptionNoDelivery] = useState(false);
+  const [exceptionReason, setExceptionReason] = useState('');
+
+  // Inbound visibility & auto-fill
+  const showInbound = shouldShowInbound(vendor, dayOfWeek, exceptionNoDelivery);
+  const autoInbound = useMemo(() => {
+    if (!showInbound) return {};
+    return getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
+  }, [date, vendor, dayOfWeek, showInbound]);
+
+  // Reset cover days when date/vendor changes
+  useEffect(() => {
+    setCoverDaysInput(getCoverDays(vendor, getDayOfWeek(date)));
+    setExceptionNoDelivery(false);
+    setExceptionReason('');
+  }, [date, vendor]);
 
   // Load existing record or draft for this date+vendor
   useEffect(() => {
@@ -57,7 +79,6 @@ export function TodayRecord() {
 
   // Persist draft to localStorage whenever itemData, recorder, date, or vendor changes
   useEffect(() => {
-    // Only save draft if there's actual data and no saved record yet
     const hasData = Object.keys(itemData).some(k => {
       const d = itemData[k];
       return d && (Object.values(d.values).some(v => v !== '' && v !== 0) || d.memo);
@@ -79,7 +100,7 @@ export function TodayRecord() {
     const record: DailyRecord = {
       id: editingId || crypto.randomUUID(),
       date, vendor, recorderType: recorder, orderDay: dayOfWeek,
-      coverDays: coverDays ? coverDays.split(',') : [],
+      coverDays: coverDaysInput ? coverDaysInput.split(',').map(s => s.trim()).filter(Boolean) : [],
       items: recordItems,
       createdAt: editingId ? '' : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -94,12 +115,10 @@ export function TodayRecord() {
     const newDate = prompt('복사할 날짜를 입력하세요 (YYYY-MM-DD):', today);
     if (!newDate) return;
 
-    // Check if a record already exists for the target date + vendor
     const existingRecord = getRecordsByDate(newDate).find(r => r.vendor === vendor);
     if (existingRecord) {
       const overwrite = confirm(`${newDate}에 이미 ${vendor === 'farmers' ? '파머스' : '마켓봄'} 기록이 있습니다.\n기존 기록을 새 기록으로 덮어쓰시겠습니까?`);
       if (!overwrite) return;
-      // Delete the existing record so the new one replaces it
       deleteRecord(existingRecord.id);
     }
 
@@ -154,19 +173,55 @@ export function TodayRecord() {
             <span className="text-destructive">✗ 비발주일</span>
           )}
         </div>
-        {coverDays && (
-          <div className="flex items-center gap-1 text-xs">
-            <span className="text-muted-foreground">커버일:</span>
-            <span className="font-medium">{coverDays}</span>
-          </div>
+      </div>
+
+      {/* Cover days + Exception controls */}
+      <div className={`flex flex-wrap items-center gap-3 mb-3 p-2 bg-muted/20 rounded border ${isMobile ? 'flex-col items-start gap-2' : ''}`}>
+        <label className="flex items-center gap-1 text-xs">
+          <span className="text-muted-foreground">커버일:</span>
+          <Input
+            className="h-7 text-xs w-40"
+            value={coverDaysInput}
+            onChange={e => setCoverDaysInput(e.target.value)}
+            placeholder="예: 월,화,수"
+          />
+          {coverDaysInput !== defaultCoverDays && (
+            <Button variant="ghost" size="sm" className="h-6 text-xs px-1 text-muted-foreground" onClick={() => setCoverDaysInput(defaultCoverDays)}>
+              초기화
+            </Button>
+          )}
+        </label>
+
+        <label className="flex items-center gap-1 text-xs">
+          <input
+            type="checkbox"
+            checked={exceptionNoDelivery}
+            onChange={e => setExceptionNoDelivery(e.target.checked)}
+            className="rounded"
+          />
+          <span className="text-muted-foreground">오늘 입고 없음 (예외)</span>
+        </label>
+
+        {exceptionNoDelivery && (
+          <label className="flex items-center gap-1 text-xs">
+            <span className="text-muted-foreground">사유:</span>
+            <select className="h-7 border rounded px-2 text-xs bg-background" value={exceptionReason} onChange={e => setExceptionReason(e.target.value)}>
+              <option value="">선택</option>
+              {EXCEPTION_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </label>
+        )}
+
+        {showInbound && (
+          <span className="text-xs text-orange-600 font-medium">📦 입고일 (이전 발주분 자동 표시)</span>
         )}
       </div>
 
       {/* Form */}
       {vendor === 'farmers' ? (
-        <FarmersForm data={itemData} onChange={handleItemChange} />
+        <FarmersForm data={itemData} onChange={handleItemChange} showInbound={showInbound} autoInbound={autoInbound} />
       ) : (
-        <MarketbomForm data={itemData} onChange={handleItemChange} settings={settings} />
+        <MarketbomForm data={itemData} onChange={handleItemChange} settings={settings} showInbound={showInbound} autoInbound={autoInbound} />
       )}
 
       {/* Actions */}

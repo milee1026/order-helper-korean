@@ -8,6 +8,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface FarmersFormProps {
   data: Record<string, ItemData>;
   onChange: (itemId: string, data: ItemData) => void;
+  showInbound?: boolean;
+  autoInbound?: Record<string, number>;
 }
 
 function useBroccoliAvgPerKg(): number | null {

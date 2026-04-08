@@ -12,6 +12,8 @@ interface MarketbomFormProps {
   data: Record<string, ItemData>;
   onChange: (itemId: string, data: ItemData) => void;
   settings: AppSettings;
+  showInbound?: boolean;
+  autoInbound?: Record<string, number>;
 }
 
 export function MarketbomForm({ data, onChange, settings }: MarketbomFormProps) {
