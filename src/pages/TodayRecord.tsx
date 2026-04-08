@@ -52,6 +52,7 @@ function createPrefilledInboundData(vendor: Vendor, autoInbound: Record<string, 
 
   return prefilled;
 }
+export function TodayRecord() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const settings = loadSettings();

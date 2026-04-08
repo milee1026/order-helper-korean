@@ -35,7 +35,7 @@ function useBroccoliAvgPerKg(): number | null {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export function FarmersForm({ data, onChange }: FarmersFormProps) {
+export function FarmersForm({ data, onChange, showInbound = true, autoInbound = {} }: FarmersFormProps) {
   const getItem = (id: string): ItemData => data[id] || { itemId: id, values: {}, inbound: '', order: '', memo: '' };
   const isMobile = useIsMobile();
 
@@ -55,17 +55,15 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
 
   const broccoliAvg = useBroccoliAvgPerKg();
 
-  // ── 샐야 ──
   const sd = getItem('f-salad');
   const sdUnused = Number(sd.values.unusedPortioned) || 0;
   const sdRatio = Number(sd.values.usedRatio) || 0;
   const sdUnport = Number(sd.values.unportioned) || 0;
-  const sdInbound = Number(sd.values.inbound) || 0;
   const sdTotal = sdUnused + sdRatio + sdUnport;
   const sdOrderKg = Number(sd.values.orderKg) || 0;
   const sdOrderRack = sdOrderKg > 0 ? sdOrderKg / 2 : null;
+  const sdInboundValue = sd.values.inbound ?? (showInbound ? (autoInbound['f-salad'] ?? '') : '');
 
-  // ── 브로콜리 ──
   const bd = getItem('f-broccoli');
   const bdUnused = Number(bd.values.unusedBlanched) || 0;
   const bdRatio = Number(bd.values.usedBlanchedRatio) || 0;
@@ -73,86 +71,93 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
   const bdUntrimmed = Number(bd.values.untrimmed) || 0;
   const bdUntrimmedConv = bdUntrimmed / 4;
   const bdTotal = bdUnused + bdRatio + bdPrepped + bdUntrimmedConv;
+  const bdInboundKgValue = bd.values.inboundKg ?? (showInbound ? (autoInbound['f-broccoli'] ?? '') : '');
 
-  // ── 파프리카 ──
   const pd = getItem('f-paprika');
   const pdUnused = Number(pd.values.unusedPrepped) || 0;
   const pdRatio = Number(pd.values.usedRatio) || 0;
   const pdUntrimmedKg = Number(pd.values.untrimmedKg) || 0;
-  const pdInboundKg = Number(pd.values.inbound) || 0;
-  const pdUntrimmedConv = pdUntrimmedKg / 5 * 3;
-  const pdInboundConv = pdInboundKg / 5 * 3;
+  const pdUntrimmedConv = (pdUntrimmedKg / 5) * 3;
   const pdTotal = pdUnused + pdRatio + pdUntrimmedConv;
+  const pdInboundValue = pd.values.inbound ?? (showInbound ? (autoInbound['f-paprika'] ?? '') : '');
 
-  // ── 쪽파 ──
   const cd = getItem('f-chive');
   const cdUnused = Number(cd.values.unusedPortioned) || 0;
   const cdRatio = Number(cd.values.usedRatio) || 0;
   const cdUnportBags = Number(cd.values.unportionedBags) || 0;
-  const cdInboundBags = Number(cd.values.inbound) || 0;
   const cdUnportConv = cdUnportBags * 2;
-  const cdInboundConv = cdInboundBags * 2;
   const cdTotal = cdUnused + cdRatio + cdUnportConv;
+  const cdInboundValue = cd.values.inbound ?? (showInbound ? (autoInbound['f-chive'] ?? '') : '');
 
   return (
     <div>
       {isMobile ? (
         <div className="space-y-3">
-          {/* 샐야 */}
           <MobileCard
-            name="샐야" desc="2kg = 1봉지 = 1락" note="참고: 2kg 단위 발주"
+            name="샐야"
+            desc="2kg = 1봉지 = 1락"
+            note="참고: 2kg 단위 발주"
             total={<>총재고(락): <b>{sdTotal ? round2(sdTotal) : '-'}</b></>}
-            memo={sd.memo} onMemoChange={v => updateMemo('f-salad', v)}
+            memo={sd.memo}
+            onMemoChange={v => updateMemo('f-salad', v)}
           >
             <MobileNumField label="미사용(락)" value={sd.values.unusedPortioned} onChange={v => updateField('f-salad', 'unusedPortioned', v)} />
             <MobileRatioField label="사용중 비율" value={sdRatio} onChange={v => updateField('f-salad', 'usedRatio', v)} />
             <MobileNumField label="미소분(락)" value={sd.values.unportioned} onChange={v => updateField('f-salad', 'unportioned', v)} />
-            <MobileNumField label="입고분(락)" value={sd.values.inbound} onChange={v => updateField('f-salad', 'inbound', v)} />
+            {showInbound && <MobileNumField label="입고분(락)" value={sdInboundValue} onChange={v => updateField('f-salad', 'inbound', v)} />}
             <MobileNumField label="발주량(kg)" value={sd.values.orderKg} onChange={v => updateField('f-salad', 'orderKg', v)} />
             {sdOrderRack !== null && <div className="text-xs text-primary font-medium">= {sdOrderRack}락</div>}
           </MobileCard>
-          {/* 브로콜리 */}
+
           <MobileCard
-            name="브로콜리" desc="4송이 = 1/4 바트 1통" note="참고: 4kg, 8kg 단위 발주"
+            name="브로콜리"
+            desc="4송이 = 1/4 바트 1통"
+            note="참고: 4kg, 8kg 단위 발주"
             extraNote={broccoliAvg !== null ? `참고: 1kg ≈ ${broccoliAvg}송이` : undefined}
             total={<>{bdUntrimmed > 0 && <span>미손질→{round2(bdUntrimmedConv)} </span>}총재고(1/4 바트): <b>{bdTotal ? round2(bdTotal) : '-'}</b></>}
-            memo={bd.memo} onMemoChange={v => updateMemo('f-broccoli', v)}
+            memo={bd.memo}
+            onMemoChange={v => updateMemo('f-broccoli', v)}
           >
             <MobileNumField label="미사용 데침(1/4 바트)" value={bd.values.unusedBlanched} onChange={v => updateField('f-broccoli', 'unusedBlanched', v)} />
             <MobileRatioField label="사용중 비율" value={bdRatio} onChange={v => updateField('f-broccoli', 'usedBlanchedRatio', v)} />
             <MobileNumField label="손질(1/4 바트)" value={bd.values.prepped} onChange={v => updateField('f-broccoli', 'prepped', v)} />
             <MobileNumField label="미손질(송이)" value={bd.values.untrimmed} onChange={v => updateField('f-broccoli', 'untrimmed', v)} />
-            <MobileNumField label="입고분(kg)" value={bd.values.inboundKg} onChange={v => updateField('f-broccoli', 'inboundKg', v)} />
-            <MobileNumField label="입고분(송이)" value={bd.values.inboundCount} onChange={v => updateField('f-broccoli', 'inboundCount', v)} />
+            {showInbound && <MobileNumField label="입고분(kg)" value={bdInboundKgValue} onChange={v => updateField('f-broccoli', 'inboundKg', v)} />}
+            {showInbound && <MobileNumField label="입고분(송이)" value={bd.values.inboundCount} onChange={v => updateField('f-broccoli', 'inboundCount', v)} />}
             <MobileNumField label="발주량(kg)" value={bd.values.orderKg} onChange={v => updateField('f-broccoli', 'orderKg', v)} />
           </MobileCard>
-          {/* 파프리카 */}
+
           <MobileCard
-            name="파프리카" desc="5kg = 1/4 바트 3통" note="참고: 5kg 단위 발주"
+            name="파프리카"
+            desc="5kg = 1/4 바트 3통"
+            note="참고: 5kg 단위 발주"
             total={<>{pdUntrimmedKg > 0 && <span>미손질→{round2(pdUntrimmedConv)} </span>}총재고(1/4 바트): <b>{pdTotal ? round2(pdTotal) : '-'}</b></>}
-            memo={pd.memo} onMemoChange={v => updateMemo('f-paprika', v)}
+            memo={pd.memo}
+            onMemoChange={v => updateMemo('f-paprika', v)}
           >
             <MobileNumField label="미사용 손질(1/4 바트)" value={pd.values.unusedPrepped} onChange={v => updateField('f-paprika', 'unusedPrepped', v)} />
             <MobileRatioField label="사용중 비율" value={pdRatio} onChange={v => updateField('f-paprika', 'usedRatio', v)} />
             <MobileNumField label="미손질(kg)" value={pd.values.untrimmedKg} onChange={v => updateField('f-paprika', 'untrimmedKg', v)} />
-            <MobileNumField label="입고분(kg)" value={pd.values.inbound} onChange={v => updateField('f-paprika', 'inbound', v)} />
+            {showInbound && <MobileNumField label="입고분(kg)" value={pdInboundValue} onChange={v => updateField('f-paprika', 'inbound', v)} />}
             <MobileNumField label="발주량(kg)" value={pd.values.orderKg} onChange={v => updateField('f-paprika', 'orderKg', v)} />
           </MobileCard>
-          {/* 쪽파 */}
+
           <MobileCard
-            name="쪽파" desc="1봉지(900g) = 1/4 바트 2통" note="참고: 1봉지(900g) 단위 발주"
+            name="쪽파"
+            desc="1봉지(900g) = 1/4 바트 2통"
+            note="참고: 1봉지(900g) 단위 발주"
             total={<>{cdUnportBags > 0 && <span>미소분→{round2(cdUnportConv)} </span>}총재고(1/4 바트): <b>{cdTotal ? round2(cdTotal) : '-'}</b></>}
-            memo={cd.memo} onMemoChange={v => updateMemo('f-chive', v)}
+            memo={cd.memo}
+            onMemoChange={v => updateMemo('f-chive', v)}
           >
             <MobileNumField label="미사용 소분(1/4 바트)" value={cd.values.unusedPortioned} onChange={v => updateField('f-chive', 'unusedPortioned', v)} />
             <MobileRatioField label="사용중 비율" value={cdRatio} onChange={v => updateField('f-chive', 'usedRatio', v)} />
             <MobileNumField label="미소분(봉지)" value={cd.values.unportionedBags} onChange={v => updateField('f-chive', 'unportionedBags', v)} />
-            <MobileNumField label="입고분(봉지)" value={cd.values.inbound} onChange={v => updateField('f-chive', 'inbound', v)} />
+            {showInbound && <MobileNumField label="입고분(봉지)" value={cdInboundValue} onChange={v => updateField('f-chive', 'inbound', v)} />}
             <MobileNumField label="발주량(봉지)" value={cd.values.orderBags} onChange={v => updateField('f-chive', 'orderBags', v)} />
           </MobileCard>
         </div>
       ) : (
-        /* ── DESKTOP TABLE ── */
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
@@ -164,7 +169,6 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
               </tr>
             </thead>
             <tbody>
-              {/* 샐야 */}
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
                   <div className="font-medium">샐야</div>
@@ -173,23 +177,29 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {[{ key: 'unusedPortioned', label: '미사용(락)' }].map(f => (
-                      <label key={f.key} className="flex items-center gap-1 text-xs">
-                        <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
-                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={sd.values[f.key] ?? ''} onChange={e => updateField('f-salad', f.key, e.target.value)} />
-                      </label>
-                    ))}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">미사용(락)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={sd.values.unusedPortioned ?? ''} onChange={e => updateField('f-salad', 'unusedPortioned', e.target.value)} />
+                    </label>
                     <div className="flex items-center gap-1 text-xs">
                       <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                       <RatioSelector value={sdRatio} onChange={v => updateField('f-salad', 'usedRatio', v)} />
                     </div>
-                    {[{ key: 'unportioned', label: '미소분(락)' }, { key: 'inbound', label: '입고분(락)' }, { key: 'orderKg', label: '발주량(kg)' }].map(f => (
-                      <label key={f.key} className="flex items-center gap-1 text-xs">
-                        <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
-                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={sd.values[f.key] ?? ''} onChange={e => updateField('f-salad', f.key, e.target.value)} />
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">미소분(락)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={sd.values.unportioned ?? ''} onChange={e => updateField('f-salad', 'unportioned', e.target.value)} />
+                    </label>
+                    {showInbound && (
+                      <label className="flex items-center gap-1 text-xs">
+                        <span className="text-muted-foreground whitespace-nowrap">입고분(락)</span>
+                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={sdInboundValue} onChange={e => updateField('f-salad', 'inbound', e.target.value)} />
                       </label>
-                    ))}
-                    {sdOrderRack !== null && <span className="text-xs text-blue-600 font-medium self-center">= {sdOrderRack}락</span>}
+                    )}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">발주량(kg)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={sd.values.orderKg ?? ''} onChange={e => updateField('f-salad', 'orderKg', e.target.value)} />
+                    </label>
+                    {sdOrderRack !== null && <span className="text-xs text-primary font-medium self-center">= {sdOrderRack}락</span>}
                   </div>
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
@@ -200,7 +210,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                   <Input className="h-7 text-xs px-1" placeholder="메모" value={sd.memo} onChange={e => updateMemo('f-salad', e.target.value)} />
                 </td>
               </tr>
-              {/* 브로콜리 */}
+
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
                   <div className="font-medium">브로콜리</div>
@@ -210,22 +220,38 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {[{ key: 'unusedBlanched', label: '미사용 데침(1/4 바트)' }].map(f => (
-                      <label key={f.key} className="flex items-center gap-1 text-xs">
-                        <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
-                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={bd.values[f.key] ?? ''} onChange={e => updateField('f-broccoli', f.key, e.target.value)} />
-                      </label>
-                    ))}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">미사용 데침(1/4 바트)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={bd.values.unusedBlanched ?? ''} onChange={e => updateField('f-broccoli', 'unusedBlanched', e.target.value)} />
+                    </label>
                     <div className="flex items-center gap-1 text-xs">
                       <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                       <RatioSelector value={bdRatio} onChange={v => updateField('f-broccoli', 'usedBlanchedRatio', v)} />
                     </div>
-                    {[{ key: 'prepped', label: '손질(1/4 바트)' }, { key: 'untrimmed', label: '미손질(송이)' }, { key: 'inboundKg', label: '입고분(kg)' }, { key: 'inboundCount', label: '입고분(송이)' }, { key: 'orderKg', label: '발주량(kg)' }].map(f => (
-                      <label key={f.key} className="flex items-center gap-1 text-xs">
-                        <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
-                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={bd.values[f.key] ?? ''} onChange={e => updateField('f-broccoli', f.key, e.target.value)} />
-                      </label>
-                    ))}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">손질(1/4 바트)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={bd.values.prepped ?? ''} onChange={e => updateField('f-broccoli', 'prepped', e.target.value)} />
+                    </label>
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">미손질(송이)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={bd.values.untrimmed ?? ''} onChange={e => updateField('f-broccoli', 'untrimmed', e.target.value)} />
+                    </label>
+                    {showInbound && (
+                      <>
+                        <label className="flex items-center gap-1 text-xs">
+                          <span className="text-muted-foreground whitespace-nowrap">입고분(kg)</span>
+                          <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={bdInboundKgValue} onChange={e => updateField('f-broccoli', 'inboundKg', e.target.value)} />
+                        </label>
+                        <label className="flex items-center gap-1 text-xs">
+                          <span className="text-muted-foreground whitespace-nowrap">입고분(송이)</span>
+                          <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={bd.values.inboundCount ?? ''} onChange={e => updateField('f-broccoli', 'inboundCount', e.target.value)} />
+                        </label>
+                      </>
+                    )}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">발주량(kg)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={bd.values.orderKg ?? ''} onChange={e => updateField('f-broccoli', 'orderKg', e.target.value)} />
+                    </label>
                   </div>
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
@@ -237,7 +263,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                   <Input className="h-7 text-xs px-1" placeholder="메모" value={bd.memo} onChange={e => updateMemo('f-broccoli', e.target.value)} />
                 </td>
               </tr>
-              {/* 파프리카 */}
+
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
                   <div className="font-medium">파프리카</div>
@@ -246,22 +272,28 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {[{ key: 'unusedPrepped', label: '미사용 손질(1/4 바트)' }].map(f => (
-                      <label key={f.key} className="flex items-center gap-1 text-xs">
-                        <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
-                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={pd.values[f.key] ?? ''} onChange={e => updateField('f-paprika', f.key, e.target.value)} />
-                      </label>
-                    ))}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">미사용 손질(1/4 바트)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={pd.values.unusedPrepped ?? ''} onChange={e => updateField('f-paprika', 'unusedPrepped', e.target.value)} />
+                    </label>
                     <div className="flex items-center gap-1 text-xs">
                       <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                       <RatioSelector value={pdRatio} onChange={v => updateField('f-paprika', 'usedRatio', v)} />
                     </div>
-                    {[{ key: 'untrimmedKg', label: '미손질(kg)' }, { key: 'inbound', label: '입고분(kg)' }, { key: 'orderKg', label: '발주량(kg)' }].map(f => (
-                      <label key={f.key} className="flex items-center gap-1 text-xs">
-                        <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
-                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={pd.values[f.key] ?? ''} onChange={e => updateField('f-paprika', f.key, e.target.value)} />
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">미손질(kg)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={pd.values.untrimmedKg ?? ''} onChange={e => updateField('f-paprika', 'untrimmedKg', e.target.value)} />
+                    </label>
+                    {showInbound && (
+                      <label className="flex items-center gap-1 text-xs">
+                        <span className="text-muted-foreground whitespace-nowrap">입고분(kg)</span>
+                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={pdInboundValue} onChange={e => updateField('f-paprika', 'inbound', e.target.value)} />
                       </label>
-                    ))}
+                    )}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">발주량(kg)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={pd.values.orderKg ?? ''} onChange={e => updateField('f-paprika', 'orderKg', e.target.value)} />
+                    </label>
                   </div>
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
@@ -273,7 +305,7 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                   <Input className="h-7 text-xs px-1" placeholder="메모" value={pd.memo} onChange={e => updateMemo('f-paprika', e.target.value)} />
                 </td>
               </tr>
-              {/* 쪽파 */}
+
               <tr className="hover:bg-accent/50">
                 <td className="border px-2 py-1">
                   <div className="font-medium">쪽파</div>
@@ -282,22 +314,28 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {[{ key: 'unusedPortioned', label: '미사용 소분(1/4 바트)' }].map(f => (
-                      <label key={f.key} className="flex items-center gap-1 text-xs">
-                        <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
-                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={cd.values[f.key] ?? ''} onChange={e => updateField('f-chive', f.key, e.target.value)} />
-                      </label>
-                    ))}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">미사용 소분(1/4 바트)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={cd.values.unusedPortioned ?? ''} onChange={e => updateField('f-chive', 'unusedPortioned', e.target.value)} />
+                    </label>
                     <div className="flex items-center gap-1 text-xs">
                       <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                       <RatioSelector value={cdRatio} onChange={v => updateField('f-chive', 'usedRatio', v)} />
                     </div>
-                    {[{ key: 'unportionedBags', label: '미소분(봉지)' }, { key: 'inbound', label: '입고분(봉지)' }, { key: 'orderBags', label: '발주량(봉지)' }].map(f => (
-                      <label key={f.key} className="flex items-center gap-1 text-xs">
-                        <span className="text-muted-foreground whitespace-nowrap">{f.label}</span>
-                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={cd.values[f.key] ?? ''} onChange={e => updateField('f-chive', f.key, e.target.value)} />
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">미소분(봉지)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={cd.values.unportionedBags ?? ''} onChange={e => updateField('f-chive', 'unportionedBags', e.target.value)} />
+                    </label>
+                    {showInbound && (
+                      <label className="flex items-center gap-1 text-xs">
+                        <span className="text-muted-foreground whitespace-nowrap">입고분(봉지)</span>
+                        <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={cdInboundValue} onChange={e => updateField('f-chive', 'inbound', e.target.value)} />
                       </label>
-                    ))}
+                    )}
+                    <label className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground whitespace-nowrap">발주량(봉지)</span>
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={cd.values.orderBags ?? ''} onChange={e => updateField('f-chive', 'orderBags', e.target.value)} />
+                    </label>
                   </div>
                 </td>
                 <td className="border px-2 py-1 text-center font-mono text-xs">
@@ -317,7 +355,6 @@ export function FarmersForm({ data, onChange }: FarmersFormProps) {
   );
 }
 
-/* ── Mobile helper components ── */
 function MobileCard({ name, desc, note, extraNote, total, memo, onMemoChange, children }: {
   name: string; desc: string; note: string; extraNote?: string;
   total: React.ReactNode; memo: string; onMemoChange: (v: string) => void;
@@ -331,9 +368,7 @@ function MobileCard({ name, desc, note, extraNote, total, memo, onMemoChange, ch
         <div className="text-orange-600" style={{ fontSize: '11px' }}>{note}</div>
         {extraNote && <div className="text-blue-600" style={{ fontSize: '11px' }}>{extraNote}</div>}
       </div>
-      <div className="px-3 py-2 space-y-2">
-        {children}
-      </div>
+      <div className="px-3 py-2 space-y-2">{children}</div>
       <div className="px-3 py-2 border-t bg-muted/20 flex items-center justify-between gap-2">
         <div className="text-xs font-mono">{total}</div>
         <Input className="h-7 text-xs px-1 w-28" placeholder="메모" value={memo} onChange={e => onMemoChange(e.target.value)} />
