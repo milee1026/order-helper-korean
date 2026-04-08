@@ -10,6 +10,7 @@ interface AppLayoutProps {
 
 const TABS = [
   { id: 'today', label: '오늘 기록' },
+  { id: 'automation', label: '자동화 발주' },
   { id: 'history', label: '기록 내역' },
   { id: 'analysis', label: '분석 / 요약' },
   { id: 'settings', label: '설정 / 내보내기' },

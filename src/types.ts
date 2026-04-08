@@ -46,6 +46,31 @@ export interface AppSettings {
   meatPacksPerTray: Record<string, number>;
 }
 
+export interface AutomationItemData {
+  itemId: string;
+  currentStock: number;
+  currentStockValues: Record<string, number | string>;
+  inboundRef: number | string;
+  defaultOrderCandidate: number;
+  minThresholdCandidate: number;
+  recommendedOrder: number;
+  finalOrder: number;
+  memo: string;
+}
+
+export interface AutomationRecord {
+  id: string;
+  date: string;
+  vendor: Vendor;
+  recorderType: RecorderType;
+  orderDay: number;
+  coverDays: string[];
+  items: AutomationItemData[];
+  createdAt: string;
+  updatedAt: string;
+  type: 'automation';
+}
+
 export interface CsvRow {
   date: string;
   vendor: string;
