@@ -1,4 +1,4 @@
-import { AutomationItemData, AutomationRecord, RecorderType } from '@/types';
+﻿import { AutomationItemData, AutomationRecord, RecorderType } from '@/types';
 
 const AUTO_RECORDS_KEY = 'automation-records';
 
@@ -12,6 +12,42 @@ export interface AutomationDraft {
 
 let automationDraftsCache: Record<string, AutomationDraft> = {};
 
+function isLegacyAutoFillArtifact(item: AutomationItemData): boolean {
+  const keys = Object.keys(item.currentStockValues || {});
+  return item.itemId === 'ms-med-teri'
+    && keys.length === 1
+    && keys[0] === 'usedRatio'
+    && Number(item.currentStockValues.usedRatio) === 0.2;
+}
+
+function normalizeAutomationItem(item: AutomationItemData): AutomationItemData {
+  if (!isLegacyAutoFillArtifact(item)) return item;
+  return {
+    ...item,
+    currentStockValues: {},
+    currentStock: 0,
+    defaultOrderCandidate: 0,
+    minThresholdCandidate: 0,
+    recommendedOrder: 0,
+  };
+}
+
+function normalizeAutomationRecord(record: AutomationRecord): AutomationRecord {
+  return {
+    ...record,
+    items: record.items.map(normalizeAutomationItem),
+  };
+}
+
+function normalizeAutomationDraft(draft: AutomationDraft): AutomationDraft {
+  return {
+    ...draft,
+    autoItems: Object.fromEntries(
+      Object.entries(draft.autoItems).map(([itemId, item]) => [itemId, normalizeAutomationItem(item)])
+    ),
+  };
+}
+
 function draftKey(date: string, vendor: string): string {
   return `${date}__${vendor}`;
 }
@@ -19,7 +55,12 @@ function draftKey(date: string, vendor: string): string {
 export function loadAutomationRecords(): AutomationRecord[] {
   try {
     const raw = localStorage.getItem(AUTO_RECORDS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const records = raw ? (JSON.parse(raw) as AutomationRecord[]) : [];
+    const normalized = records.map(normalizeAutomationRecord);
+    if (raw && JSON.stringify(normalized) !== raw) {
+      localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(normalized));
+    }
+    return normalized;
   } catch { return []; }
 }
 
@@ -28,7 +69,7 @@ function loadAutomationDrafts(): Record<string, AutomationDraft> {
 }
 
 export function saveAutomationRecords(records: AutomationRecord[]) {
-  localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(records));
+  localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(records.map(normalizeAutomationRecord)));
 }
 
 export function addAutomationRecord(record: AutomationRecord) {
@@ -44,13 +85,14 @@ export function getAutomationRecordsByDate(date: string, vendor?: string): Autom
 }
 
 export function loadAutomationDraft(date: string, vendor: string): AutomationDraft | null {
-  return loadAutomationDrafts()[draftKey(date, vendor)] ?? null;
+  const draft = loadAutomationDrafts()[draftKey(date, vendor)] ?? null;
+  return draft ? normalizeAutomationDraft(draft) : null;
 }
 
 export function saveAutomationDraft(date: string, vendor: string, draft: AutomationDraft) {
   automationDraftsCache = {
     ...automationDraftsCache,
-    [draftKey(date, vendor)]: draft,
+    [draftKey(date, vendor)]: normalizeAutomationDraft(draft),
   };
 }
 
@@ -59,3 +101,4 @@ export function deleteAutomationDraft(date: string, vendor: string) {
   delete next[draftKey(date, vendor)];
   automationDraftsCache = next;
 }
+

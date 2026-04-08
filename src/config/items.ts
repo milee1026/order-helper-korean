@@ -1,4 +1,4 @@
-import { ItemConfig, AppSettings } from '@/types';
+﻿import { ItemConfig, AppSettings } from '@/types';
 
 // ─── FARMERS ───
 export const FARMERS_ITEMS: ItemConfig[] = [
@@ -273,6 +273,10 @@ const OTHER_DEFS: [string, string, string, { ratioOnly?: boolean; unusedOnly?: b
     totalLabel: '총재고(통)',
     computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
   }],
+  ['mo-garlic-flake', '마늘후레이크', '1통', {
+    totalLabel: '총재고(통)',
+    computeTotal: (v: Record<string, number>) => (Number(v.unused) || 0) + (Number(v.usedRatio) || 0),
+  }],
   ['mo-yogurt-spoon', '요거트스푼', '100개 1봉지'],
   ['mo-red-pepper', '크러쉬드 레드페퍼', '1통'],
   ['mo-olive-oil', '올리브유', '1통'],
@@ -302,3 +306,4 @@ export function getItemsByVendor(vendor: 'farmers' | 'marketbom'): ItemConfig[] 
 export function getItemsByCategory(category: string): ItemConfig[] {
   return MARKETBOM_ITEMS.filter(i => i.category === category);
 }
+

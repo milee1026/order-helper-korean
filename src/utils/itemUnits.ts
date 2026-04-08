@@ -1,4 +1,4 @@
-// Unit labels for display in automation ordering UI
+﻿// Unit labels for display in automation ordering UI
 // orderUnit = unit used for ordering (평균발주량, 추천발주량, 최종발주)
 // stockUnit = unit used for stock measurement (최소재고량, 현재재고)
 
@@ -82,6 +82,7 @@ const ITEM_UNITS: Record<string, ItemUnits> = {
   'mo-furikake': { orderUnit: '팩', stockUnit: '팩' },
   'mo-almond': { orderUnit: '팩', stockUnit: '팩' },
   'mo-agave': { orderUnit: '묶음', stockUnit: '통' },
+  'mo-garlic-flake': { orderUnit: '통', stockUnit: '통' },
   'mo-yogurt-spoon': { orderUnit: '봉지', stockUnit: '봉지' },
   'mo-red-pepper': { orderUnit: '통', stockUnit: '통' },
   'mo-olive-oil': { orderUnit: '통', stockUnit: '통' },
@@ -118,3 +119,4 @@ export function fmtWithUnit(val: number | undefined, unit: string): string {
   if (unit.includes('/')) return `${rounded}(${unit})`;
   return `${rounded}${unit}`;
 }
+

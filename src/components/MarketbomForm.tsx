@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { ItemData, AppSettings } from '@/types';
 import { MARKETBOM_CATEGORIES, getItemsByCategory } from '@/config/items';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,13 @@ interface MarketbomFormProps {
 
 function toRatioValue(value: string | number | undefined | null): number | null {
   return value === undefined || value === null || value === '' ? null : Number(value);
+}
+
+function hasItemInput(data: ItemData): boolean {
+  return Object.values(data.values || {}).some(value => value !== '' && value !== null && value !== undefined)
+    || data.inbound !== ''
+    || data.order !== ''
+    || data.memo !== '';
 }
 
 export function MarketbomForm({ data, onChange, settings, showInbound = true }: MarketbomFormProps) {
@@ -77,7 +84,7 @@ export function MarketbomForm({ data, onChange, settings, showInbound = true }: 
                           <span className="font-medium text-sm">{item.name}</span>
                           <span className="text-muted-foreground ml-2" style={{ fontSize: '11px' }}>{item.unitDesc}</span>
                         </div>
-                        {total != null && (
+                        {hasItemInput(d) && total != null && (
                           <div className="text-xs font-mono">
                             <span className="text-muted-foreground">{item.totalLabel || '총재고'}: </span>
                             <b>{Math.round(total * 100) / 100}</b>
@@ -139,7 +146,7 @@ export function MarketbomForm({ data, onChange, settings, showInbound = true }: 
                           </div>
                         </td>
                         <td className="border px-1 py-1 text-center font-mono">
-                          {total != null ? (
+                          {hasItemInput(d) && total != null ? (
                             <div>
                               <div className="text-muted-foreground" style={{ fontSize: '9px' }}>{item.totalLabel || '총재고'}</div>
                               <div>{Math.round(total * 100) / 100}</div>
@@ -226,3 +233,4 @@ function extractPrimaryUnit(unitDesc: string): string {
   const last = parts[parts.length - 1];
   return last.replace(/^\d+/, '');
 }
+
