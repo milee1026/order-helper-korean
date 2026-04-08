@@ -1,35 +1,13 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ItemData } from '@/types';
 import { Input } from '@/components/ui/input';
 import { RatioSelector } from '@/components/RatioSelector';
-import { loadRecords } from '@/utils/storage';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface FarmersFormProps {
   data: Record<string, ItemData>;
   onChange: (itemId: string, data: ItemData) => void;
   showInbound?: boolean;
-}
-
-function useBroccoliAvgPerKg(): number | null {
-  return useMemo(() => {
-    const records = loadRecords();
-    let totalKg = 0;
-    let totalCount = 0;
-    for (const r of records) {
-      if (r.vendor !== 'farmers') continue;
-      const d = r.items.find(i => i.itemId === 'f-broccoli');
-      if (!d) continue;
-      const kg = Number(d.values.inboundKg) || 0;
-      const count = Number(d.values.inboundCount) || 0;
-      if (kg > 0 && count > 0) {
-        totalKg += kg;
-        totalCount += count;
-      }
-    }
-    if (totalKg > 0 && totalCount > 0) return Math.round((totalCount / totalKg) * 10) / 10;
-    return null;
-  }, []);
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -55,8 +33,6 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
     const current = getItem(itemId);
     onChange(itemId, { ...current, memo: val });
   };
-
-  const broccoliAvg = useBroccoliAvgPerKg();
 
   const sd = getItem('f-salad');
   const sdUnused = Number(sd.values.unusedPortioned) || 0;
@@ -116,7 +92,6 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
             name="브로콜리"
             desc="4송이 = 1/4 바트 1통"
             note="참고: 4kg, 8kg 단위 발주"
-            extraNote={broccoliAvg !== null ? `참고: 1kg ≈ ${broccoliAvg}송이` : undefined}
             total={<>{bdUntrimmed > 0 && <span>미손질→{round2(bdUntrimmedConv)} </span>}총재고(1/4 바트): <b>{bdTotal ? round2(bdTotal) : '-'}</b></>}
             memo={bd.memo}
             onMemoChange={v => updateMemo('f-broccoli', v)}
@@ -219,7 +194,6 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
                   <div className="font-medium">브로콜리</div>
                   <div className="text-muted-foreground" style={{ fontSize: '10px' }}>4송이 = 1/4 바트 1통</div>
                   <div className="text-orange-600" style={{ fontSize: '10px' }}>참고: 4kg, 8kg 단위 발주</div>
-                  {broccoliAvg !== null && <div className="text-blue-600" style={{ fontSize: '10px' }}>참고: 1kg ≈ {broccoliAvg}송이</div>}
                 </td>
                 <td className="border px-1 py-1">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
