@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { TodayRecord } from '@/pages/TodayRecord';
+import { AutomationOrder } from '@/pages/AutomationOrder';
 import { RecordHistory } from '@/pages/RecordHistory';
 import { AnalysisSummary } from '@/pages/AnalysisSummary';
 import { SettingsExport } from '@/pages/SettingsExport';
@@ -11,6 +12,7 @@ const Index = () => {
   return (
     <AppLayout activeTab={tab} onTabChange={setTab}>
       {tab === 'today' && <TodayRecord />}
+      {tab === 'automation' && <AutomationOrder />}
       {tab === 'history' && <RecordHistory />}
       {tab === 'analysis' && <AnalysisSummary />}
       {tab === 'settings' && <SettingsExport />}
