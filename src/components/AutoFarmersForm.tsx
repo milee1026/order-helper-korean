@@ -48,7 +48,7 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`text-xs font-medium ${color}`}>{status}</span>;
 }
 
-export function AutoFarmersForm({ data, onChange, recommendations }: Props) {
+export function AutoFarmersForm({ data, onChange, recommendations, showInbound = true, autoInbound = {} }: Props) {
   const isMobile = useIsMobile();
   const broccoliAvg = useBroccoliAvgPerKg();
 

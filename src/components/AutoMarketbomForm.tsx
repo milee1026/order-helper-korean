@@ -62,7 +62,7 @@ function computeMarketbomStock(itemId: string, values: Record<string, number | s
   return (Number(values.unused) || 0) + (Number(values.usedRatio) || 0);
 }
 
-export function AutoMarketbomForm({ data, onChange, recommendations, settings }: Props) {
+export function AutoMarketbomForm({ data, onChange, recommendations, settings, showInbound = true, autoInbound = {} }: Props) {
   const isMobile = useIsMobile();
 
   const updateVal = (itemId: string, key: string, val: string | number) => {
