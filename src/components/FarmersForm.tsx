@@ -9,7 +9,6 @@ interface FarmersFormProps {
   data: Record<string, ItemData>;
   onChange: (itemId: string, data: ItemData) => void;
   showInbound?: boolean;
-  autoInbound?: Record<string, number>;
 }
 
 function useBroccoliAvgPerKg(): number | null {
@@ -35,7 +34,7 @@ function useBroccoliAvgPerKg(): number | null {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export function FarmersForm({ data, onChange, showInbound = true, autoInbound = {} }: FarmersFormProps) {
+export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormProps) {
   const getItem = (id: string): ItemData => data[id] || { itemId: id, values: {}, inbound: '', order: '', memo: '' };
   const isMobile = useIsMobile();
 
@@ -62,7 +61,7 @@ export function FarmersForm({ data, onChange, showInbound = true, autoInbound = 
   const sdTotal = sdUnused + sdRatio + sdUnport;
   const sdOrderKg = Number(sd.values.orderKg) || 0;
   const sdOrderRack = sdOrderKg > 0 ? sdOrderKg / 2 : null;
-  const sdInboundValue = sd.values.inbound ?? (showInbound ? (autoInbound['f-salad'] ?? '') : '');
+  const sdInboundValue = sd.values.inbound ?? '';
 
   const bd = getItem('f-broccoli');
   const bdUnused = Number(bd.values.unusedBlanched) || 0;
@@ -71,7 +70,7 @@ export function FarmersForm({ data, onChange, showInbound = true, autoInbound = 
   const bdUntrimmed = Number(bd.values.untrimmed) || 0;
   const bdUntrimmedConv = bdUntrimmed / 4;
   const bdTotal = bdUnused + bdRatio + bdPrepped + bdUntrimmedConv;
-  const bdInboundKgValue = bd.values.inboundKg ?? (showInbound ? (autoInbound['f-broccoli'] ?? '') : '');
+  const bdInboundKgValue = bd.values.inboundKg ?? '';
 
   const pd = getItem('f-paprika');
   const pdUnused = Number(pd.values.unusedPrepped) || 0;
@@ -79,7 +78,7 @@ export function FarmersForm({ data, onChange, showInbound = true, autoInbound = 
   const pdUntrimmedKg = Number(pd.values.untrimmedKg) || 0;
   const pdUntrimmedConv = (pdUntrimmedKg / 5) * 3;
   const pdTotal = pdUnused + pdRatio + pdUntrimmedConv;
-  const pdInboundValue = pd.values.inbound ?? (showInbound ? (autoInbound['f-paprika'] ?? '') : '');
+  const pdInboundValue = pd.values.inbound ?? '';
 
   const cd = getItem('f-chive');
   const cdUnused = Number(cd.values.unusedPortioned) || 0;
@@ -87,7 +86,7 @@ export function FarmersForm({ data, onChange, showInbound = true, autoInbound = 
   const cdUnportBags = Number(cd.values.unportionedBags) || 0;
   const cdUnportConv = cdUnportBags * 2;
   const cdTotal = cdUnused + cdRatio + cdUnportConv;
-  const cdInboundValue = cd.values.inbound ?? (showInbound ? (autoInbound['f-chive'] ?? '') : '');
+  const cdInboundValue = cd.values.inbound ?? '';
 
   return (
     <div>

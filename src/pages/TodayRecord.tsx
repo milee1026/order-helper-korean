@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DailyRecord, ItemData, Vendor, RecorderType } from '@/types';
 import { getItemsByVendor, FARMERS_ITEMS } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { addRecord, getRecordsByDate, deleteRecord, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
-import { shouldShowInbound, getAutoInboundFromPrevOrder } from '@/utils/inboundLogic';
+import { shouldShowInbound } from '@/utils/inboundLogic';
 import { FarmersForm } from '@/components/FarmersForm';
 import { MarketbomForm } from '@/components/MarketbomForm';
 import { Button } from '@/components/ui/button';
@@ -13,45 +13,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const EXCEPTION_REASONS = ['업체 휴무', '공휴일', '배송 변경', '기타'];
 
-function createPrefilledInboundData(vendor: Vendor, autoInbound: Record<string, number>): Record<string, ItemData> {
-  const entries = Object.entries(autoInbound);
-  if (entries.length === 0) return {};
-
-  const prefilled: Record<string, ItemData> = {};
-
-  for (const [itemId, qty] of entries) {
-    if (vendor === 'farmers') {
-      if (itemId === 'f-broccoli') {
-        prefilled[itemId] = {
-          itemId,
-          values: { inboundKg: qty },
-          inbound: qty,
-          order: '',
-          memo: '',
-        };
-      } else {
-        prefilled[itemId] = {
-          itemId,
-          values: { inbound: qty },
-          inbound: qty,
-          order: '',
-          memo: '',
-        };
-      }
-      continue;
-    }
-
-    prefilled[itemId] = {
-      itemId,
-      values: { inbound: qty },
-      inbound: qty,
-      order: '',
-      memo: '',
-    };
-  }
-
-  return prefilled;
-}
 export function TodayRecord() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -73,12 +34,8 @@ export function TodayRecord() {
   const [exceptionNoDelivery, setExceptionNoDelivery] = useState(false);
   const [exceptionReason, setExceptionReason] = useState('');
 
-  // Inbound visibility & auto-fill
+  // Inbound visibility
   const showInbound = shouldShowInbound(vendor, dayOfWeek, exceptionNoDelivery);
-  const autoInbound = useMemo(() => {
-    if (!showInbound) return {};
-    return getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
-  }, [date, vendor, dayOfWeek, showInbound]);
 
   // Reset cover days when date/vendor changes
   useEffect(() => {
@@ -87,9 +44,19 @@ export function TodayRecord() {
     setExceptionReason('');
   }, [date, vendor]);
 
-  // Load existing record or draft for this date+vendor
+  // Load draft first, then fall back to saved record
   useEffect(() => {
+    const draft = loadDraft(date, vendor);
     const existing = getRecordsByDate(date).find(r => r.vendor === vendor);
+
+    if (draft) {
+      setItemData(draft.itemData);
+      setRecorder(draft.recorder);
+      setEditingId(existing ? existing.id : null);
+      setCoverDaysInput(existing?.coverDays?.join(',') || getCoverDays(vendor, dayOfWeek));
+      return;
+    }
+
     if (existing) {
       const dataMap: Record<string, ItemData> = {};
       existing.items.forEach(item => { dataMap[item.itemId] = item; });
@@ -97,37 +64,22 @@ export function TodayRecord() {
       setEditingId(existing.id);
       setRecorder(existing.recorderType);
       setCoverDaysInput(existing.coverDays?.join(',') || getCoverDays(vendor, dayOfWeek));
-    } else {
-      const draft = loadDraft(date, vendor);
-      if (draft) {
-        setItemData(draft.itemData);
-        setRecorder(draft.recorder);
-      } else {
-        setItemData(createPrefilledInboundData(vendor, showInbound ? autoInbound : {}));
-      }
-      setEditingId(null);
-      setCoverDaysInput(getCoverDays(vendor, dayOfWeek));
+      return;
     }
-  }, [date, vendor, autoInbound, showInbound, dayOfWeek]);
 
-  // Auto-save draft on every change
+    setItemData({});
+    setEditingId(null);
+    setRecorder('manager');
+    setCoverDaysInput(getCoverDays(vendor, dayOfWeek));
+  }, [date, vendor, dayOfWeek]);
+
   const handleItemChange = useCallback((itemId: string, d: ItemData) => {
     setItemData(prev => {
       const next = { ...prev, [itemId]: { ...d, itemId } };
+      saveDraft(date, vendor, { itemData: next, recorder });
       return next;
     });
-  }, []);
-
-  // Persist draft to localStorage whenever itemData, recorder, date, or vendor changes
-  useEffect(() => {
-    const hasData = Object.keys(itemData).some(k => {
-      const d = itemData[k];
-      return d && (Object.values(d.values).some(v => v !== '' && v !== 0) || d.memo);
-    });
-    if (hasData && !editingId) {
-      saveDraft(date, vendor, { itemData, recorder });
-    }
-  }, [itemData, recorder, date, vendor, editingId]);
+  }, [date, vendor, recorder]);
 
   const handleSave = () => {
     const items = getItemsByVendor(vendor);
@@ -200,7 +152,15 @@ export function TodayRecord() {
         </label>
         <label className="flex items-center gap-1 text-xs">
           <span className="text-muted-foreground">기록자</span>
-          <select className="h-7 border rounded px-2 text-xs bg-background" value={recorder} onChange={e => setRecorder(e.target.value as RecorderType)}>
+          <select
+            className="h-7 border rounded px-2 text-xs bg-background"
+            value={recorder}
+            onChange={e => {
+              const nextRecorder = e.target.value as RecorderType;
+              setRecorder(nextRecorder);
+              saveDraft(date, vendor, { itemData, recorder: nextRecorder });
+            }}
+          >
             <option value="manager">매니저</option>
             <option value="staff">스태프</option>
           </select>
@@ -260,9 +220,9 @@ export function TodayRecord() {
 
       {/* Form */}
       {vendor === 'farmers' ? (
-        <FarmersForm data={itemData} onChange={handleItemChange} showInbound={showInbound} autoInbound={autoInbound} />
+        <FarmersForm data={itemData} onChange={handleItemChange} showInbound={showInbound} />
       ) : (
-        <MarketbomForm data={itemData} onChange={handleItemChange} settings={settings} showInbound={showInbound} autoInbound={autoInbound} />
+        <MarketbomForm data={itemData} onChange={handleItemChange} settings={settings} showInbound={showInbound} />
       )}
 
       {/* Actions */}
@@ -276,11 +236,8 @@ export function TodayRecord() {
             FARMERS_ITEMS.forEach(item => {
               cleared[item.id] = { itemId: item.id, values: {}, inbound: '', order: '', memo: '' };
             });
-            setItemData(prev => {
-              const next = { ...prev };
-              FARMERS_ITEMS.forEach(item => { next[item.id] = cleared[item.id]; });
-              return next;
-            });
+            setItemData(cleared);
+            deleteDraft(date, vendor);
           }}>
             초기화
           </Button>

@@ -12,10 +12,9 @@ interface MarketbomFormProps {
   onChange: (itemId: string, data: ItemData) => void;
   settings: AppSettings;
   showInbound?: boolean;
-  autoInbound?: Record<string, number>;
 }
 
-export function MarketbomForm({ data, onChange, settings, showInbound = true, autoInbound = {} }: MarketbomFormProps) {
+export function MarketbomForm({ data, onChange, settings, showInbound = true }: MarketbomFormProps) {
   const getItem = (id: string): ItemData => data[id] || { itemId: id, values: {}, inbound: '', order: '', memo: '' };
   const isMobile = useIsMobile();
 
@@ -86,7 +85,7 @@ export function MarketbomForm({ data, onChange, settings, showInbound = true, au
                           <MobileFieldInput
                             key={f.key}
                             field={f}
-                            value={f.key === 'inbound' ? (d.values[f.key] ?? autoInbound[item.id] ?? '') : d.values[f.key]}
+                            value={f.key === 'inbound' ? (d.values[f.key] ?? '') : d.values[f.key]}
                             onChange={(val) => updateField(item.id, f.key, val)}
                           />
                         ))}
@@ -128,7 +127,7 @@ export function MarketbomForm({ data, onChange, settings, showInbound = true, au
                               <FieldInput
                                 key={f.key}
                                 field={f}
-                                value={f.key === 'inbound' ? (d.values[f.key] ?? autoInbound[item.id] ?? '') : d.values[f.key]}
+                                value={f.key === 'inbound' ? (d.values[f.key] ?? '') : d.values[f.key]}
                                 onChange={(val) => updateField(item.id, f.key, val)}
                                 unitDesc={item.unitDesc}
                               />
