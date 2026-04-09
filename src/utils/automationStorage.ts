@@ -85,7 +85,6 @@ function draftKey(date: string, vendor: string): string {
 }
 
 export function loadAutomationRecords(): AutomationRecord[] {
-  automationRecordsCache = normalizeAutomationRecordList(automationRecordsCache);
   return automationRecordsCache;
 }
 

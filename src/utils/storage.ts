@@ -115,7 +115,6 @@ function draftKey(date: string, vendor: string): string {
 }
 
 export function loadRecords(): DailyRecord[] {
-  recordsCache = normalizeRecordList(recordsCache);
   return recordsCache;
 }
 
