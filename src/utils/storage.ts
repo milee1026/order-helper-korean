@@ -9,6 +9,7 @@ const SETTINGS_KEY = 'inventory-settings';
 export interface DraftData {
   itemData: Record<string, ItemData>;
   recorder: RecorderType;
+  autoInboundSeeded?: boolean;
 }
 
 export const defaultSettings: AppSettings = {
@@ -20,7 +21,7 @@ const recordListeners = new Set<() => void>();
 const settingsListeners = new Set<() => void>();
 const draftListeners = new Set<() => void>();
 
-let recordsCache: DailyRecord[] = readJson(RECORDS_KEY, []);
+let recordsCache: DailyRecord[] = normalizeRecordList(readJson(RECORDS_KEY, []));
 let settingsCache: AppSettings = normalizeSettings(readJson(SETTINGS_KEY, defaultSettings));
 let draftsCache: Record<string, DraftData> = {};
 
@@ -80,6 +81,10 @@ function normalizeRecord(record: Partial<DailyRecord>): DailyRecord {
   };
 }
 
+function normalizeRecordList(records: Partial<DailyRecord>[]): DailyRecord[] {
+  return records.map((record) => normalizeRecord(record));
+}
+
 function recordTimestamp(record: Pick<DailyRecord, 'createdAt' | 'updatedAt'>) {
   return Date.parse(record.updatedAt || record.createdAt || '') || 0;
 }
@@ -110,6 +115,7 @@ function draftKey(date: string, vendor: string): string {
 }
 
 export function loadRecords(): DailyRecord[] {
+  recordsCache = normalizeRecordList(recordsCache);
   return recordsCache;
 }
 
@@ -125,7 +131,7 @@ export function useRecords(): DailyRecord[] {
 }
 
 export function saveRecords(records: DailyRecord[]) {
-  recordsCache = records.map(normalizeRecord);
+  recordsCache = normalizeRecordList(records);
   writeJson(RECORDS_KEY, recordsCache);
   emit(recordListeners);
   void replaceRecordsInFirestore(recordsCache);
@@ -206,7 +212,7 @@ export function mergeRecordsFromRemote(records: DailyRecord[]) {
 }
 
 export function replaceRecordsFromRemote(records: DailyRecord[]) {
-  recordsCache = records.map(normalizeRecord);
+  recordsCache = normalizeRecordList(records);
   writeJson(RECORDS_KEY, recordsCache);
   emit(recordListeners);
 }

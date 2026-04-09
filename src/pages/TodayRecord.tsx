@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DailyRecord, ItemData, Vendor, RecorderType } from '@/types';
 import { getItemsByVendor, FARMERS_ITEMS } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { addRecord, getRecordsByDate, deleteRecord, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
-import { shouldShowInbound } from '@/utils/inboundLogic';
+import { getAutoInboundFromPrevOrder, shouldShowInbound } from '@/utils/inboundLogic';
 import { getKstDateString } from '@/utils/date';
 import { FarmersForm } from '@/components/FarmersForm';
 import { MarketbomForm } from '@/components/MarketbomForm';
@@ -13,6 +13,61 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const EXCEPTION_REASONS = ['업체 휴무', '공휴일', '배송 변경', '기타'];
+
+function createBlankItemData(vendor: Vendor, date: string, dayOfWeek: number): Record<string, ItemData> {
+  const autoInbound = getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
+  const items = getItemsByVendor(vendor);
+  const result: Record<string, ItemData> = {};
+
+  for (const item of items) {
+    const next: ItemData = { itemId: item.id, values: {}, inbound: '', order: '', memo: '' };
+    const value = autoInbound[item.id];
+
+    if (value !== undefined) {
+      if (vendor === 'farmers' && item.id === 'f-broccoli') {
+        next.values = { ...next.values, inboundKg: value };
+      } else {
+        next.inbound = String(value);
+      }
+    }
+
+    result[item.id] = next;
+  }
+
+  return result;
+}
+
+function mergeAutoInboundDefaults(
+  itemData: Record<string, ItemData>,
+  vendor: Vendor,
+  date: string,
+  dayOfWeek: number
+): { itemData: Record<string, ItemData>; applied: boolean } {
+  const autoInbound = getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
+  const next: Record<string, ItemData> = {};
+  let applied = false;
+
+  for (const [itemId, current] of Object.entries(itemData)) {
+    const item = { ...current, values: { ...(current.values || {}) } };
+    const value = autoInbound[itemId];
+
+    if (value !== undefined) {
+      if (vendor === 'farmers' && itemId === 'f-broccoli') {
+        if (item.values.inboundKg === '' || item.values.inboundKg === undefined || item.values.inboundKg === null) {
+          item.values.inboundKg = value;
+          applied = true;
+        }
+      } else if (item.inbound === '' || item.inbound === undefined || item.inbound === null) {
+        item.inbound = String(value);
+        applied = true;
+      }
+    }
+
+    next[itemId] = item;
+  }
+
+  return { itemData: next, applied };
+}
 
 export function TodayRecord() {
   const { toast } = useToast();
@@ -24,6 +79,7 @@ export function TodayRecord() {
   const [recorder, setRecorder] = useState<RecorderType>('manager');
   const [itemData, setItemData] = useState<Record<string, ItemData>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
+  const autoInboundSeededRef = useRef(false);
 
   const dayOfWeek = getDayOfWeek(date);
   const defaultCoverDays = getCoverDays(vendor, dayOfWeek);
@@ -51,7 +107,21 @@ export function TodayRecord() {
     const existing = getRecordsByDate(date).find(r => r.vendor === vendor);
 
     if (draft) {
-      setItemData(draft.itemData);
+      autoInboundSeededRef.current = !!draft.autoInboundSeeded;
+      let nextItemData = draft.itemData;
+      if (showInbound && !draft.autoInboundSeeded) {
+        const merged = mergeAutoInboundDefaults(draft.itemData, vendor, date, dayOfWeek);
+        nextItemData = merged.itemData;
+        if (merged.applied) {
+          autoInboundSeededRef.current = true;
+          saveDraft(date, vendor, {
+            itemData: nextItemData,
+            recorder: draft.recorder,
+            autoInboundSeeded: true,
+          });
+        }
+      }
+      setItemData(nextItemData);
       setRecorder(draft.recorder);
       setEditingId(existing ? existing.id : null);
       setCoverDaysInput(existing?.coverDays?.join(',') || getCoverDays(vendor, dayOfWeek));
@@ -61,6 +131,7 @@ export function TodayRecord() {
     if (existing) {
       const dataMap: Record<string, ItemData> = {};
       existing.items.forEach(item => { dataMap[item.itemId] = item; });
+      autoInboundSeededRef.current = false;
       setItemData(dataMap);
       setEditingId(existing.id);
       setRecorder(existing.recorderType);
@@ -68,18 +139,25 @@ export function TodayRecord() {
       return;
     }
 
-    setItemData({});
+    const autoFilled = showInbound ? createBlankItemData(vendor, date, dayOfWeek) : {};
+    autoInboundSeededRef.current = false;
+    setItemData(autoFilled);
     setEditingId(null);
     setRecorder('manager');
     setCoverDaysInput(getCoverDays(vendor, dayOfWeek));
-  }, [date, vendor, dayOfWeek]);
+
+    if (showInbound && Object.values(autoFilled).some(item => item.inbound !== '' || Object.keys(item.values || {}).length > 0)) {
+      autoInboundSeededRef.current = true;
+      saveDraft(date, vendor, { itemData: autoFilled, recorder: 'manager', autoInboundSeeded: true });
+    }
+  }, [date, vendor, dayOfWeek, showInbound]);
 
   const handleItemChange = useCallback((itemId: string, d: ItemData) => {
-    setItemData(prev => {
-      const next = { ...prev, [itemId]: { ...d, itemId } };
-      saveDraft(date, vendor, { itemData: next, recorder });
-      return next;
-    });
+      setItemData(prev => {
+        const next = { ...prev, [itemId]: { ...d, itemId } };
+      saveDraft(date, vendor, { itemData: next, recorder, autoInboundSeeded: autoInboundSeededRef.current });
+        return next;
+      });
   }, [date, vendor, recorder]);
 
   const handleSave = () => {
@@ -159,7 +237,7 @@ export function TodayRecord() {
             onChange={e => {
               const nextRecorder = e.target.value as RecorderType;
               setRecorder(nextRecorder);
-              saveDraft(date, vendor, { itemData, recorder: nextRecorder });
+              saveDraft(date, vendor, { itemData, recorder: nextRecorder, autoInboundSeeded: autoInboundSeededRef.current });
             }}
           >
             <option value="manager">매니저</option>

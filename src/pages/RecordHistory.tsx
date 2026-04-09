@@ -12,7 +12,7 @@ export function RecordHistory() {
   const [filterVendor, setFilterVendor] = useState<string>('all');
 
   const filtered = useMemo(() => {
-    let r = records;
+    let r = Array.isArray(records) ? records : [];
     if (filterVendor !== 'all') r = r.filter(rec => rec.vendor === filterVendor);
     return [...r].sort((a, b) => b.date.localeCompare(a.date));
   }, [records, filterVendor]);
@@ -56,7 +56,7 @@ export function RecordHistory() {
                 </tr>
               </thead>
               <tbody>
-                {rec.items.map((item, idx) => {
+                {(Array.isArray(rec.items) ? rec.items : []).map((item, idx) => {
                   const cfg = getItemById(item.itemId);
                   return (
                     <tr key={idx}>

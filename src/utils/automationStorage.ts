@@ -9,6 +9,7 @@ export interface AutomationDraft {
   coverDaysInput: string;
   exceptionNoDelivery: boolean;
   exceptionReason: string;
+  autoInboundSeeded?: boolean;
 }
 
 let automationDraftsCache: Record<string, AutomationDraft> = {};
