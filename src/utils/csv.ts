@@ -23,7 +23,9 @@ export function recordsToCsvRows(records: DailyRecord[]): CsvRow[] {
         item_name: cfg.name,
         unit_type: cfg.unitDesc,
         used_amount: String(item.values.usedRatio ?? item.values.openPacks ?? ''),
-        unused_amount: String(item.values.unused ?? item.values.unusedTrays ?? item.values.morningStock ?? ''),
+        unused_amount: cfg.id === 'f-salad'
+          ? String(getSaladUnusedAmount(item.values))
+          : String(item.values.unused ?? item.values.unusedTrays ?? item.values.morningStock ?? ''),
         inbound_amount: String(item.inbound ?? ''),
         order_amount: String(item.order ?? ''),
         total_stock_converted: total != null ? String(Math.round(total * 100) / 100) : '',
@@ -33,6 +35,14 @@ export function recordsToCsvRows(records: DailyRecord[]): CsvRow[] {
     }
   }
   return rows;
+}
+
+function getSaladUnusedAmount(values: Record<string, number | string>): number {
+  const direct = values.unused;
+  if (direct !== undefined && direct !== null && direct !== '') {
+    return Number(direct) || 0;
+  }
+  return (Number(values.unusedPortioned) || 0) + (Number(values.unportioned) || 0);
 }
 
 export function csvRowsToString(rows: CsvRow[]): string {

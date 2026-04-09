@@ -5,14 +5,18 @@ export const FARMERS_ITEMS: ItemConfig[] = [
   {
     id: 'f-salad', name: '샐야', category: '야채', vendor: 'farmers', unitDesc: '락 (2kg=1봉지=1락)',
     fields: [
-      { key: 'unusedPortioned', label: '미사용 소분량(락)', type: 'number' },
+      { key: 'unused', label: '미사용(락)', type: 'number' },
       { key: 'usedRatio', label: '사용중 소분량 비율', type: 'ratio' },
-      { key: 'unportioned', label: '미소분량(락)', type: 'number' },
       { key: 'inbound', label: '입고분(락)', type: 'number' },
       { key: 'orderKg', label: '발주량(kg)', type: 'number' },
     ],
     totalLabel: '총재고(락)',
-    computeTotal: (v) => (Number(v.unusedPortioned) || 0) + (Number(v.usedRatio) || 0) + (Number(v.unportioned) || 0),
+    computeTotal: (v) => {
+      const directUnused = readNumber(v.unused);
+      const legacyUnused = getNumber(v.unusedPortioned) + getNumber(v.unportioned);
+      const unused = directUnused !== null ? directUnused : legacyUnused;
+      return unused + getNumber(v.usedRatio);
+    },
   },
   {
     id: 'f-broccoli', name: '브로콜리', category: '야채', vendor: 'farmers', unitDesc: '1/4 바트 (4송이=1통)',
@@ -53,6 +57,14 @@ export const FARMERS_ITEMS: ItemConfig[] = [
     computeTotal: (v) => (Number(v.unusedPortioned) || 0) + (Number(v.usedRatio) || 0) + (Number(v.unportionedBags) || 0) * 2,
   },
 ];
+
+function getNumber(value: unknown): number {
+  return value === undefined || value === null || value === '' ? 0 : Number(value) || 0;
+}
+
+function readNumber(value: unknown): number | null {
+  return value === undefined || value === null || value === '' ? null : Number(value) || 0;
+}
 
 // ─── HELPER FACTORIES ───
 function ratioItem(id: string, name: string, cat: string, unitDesc: string, opts?: {

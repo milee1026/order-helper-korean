@@ -16,6 +16,26 @@ function toRatioValue(value: string | number | undefined | null): number | null 
   return value === undefined || value === null || value === '' ? null : Number(value);
 }
 
+function getSaladUnusedValue(values: Record<string, number | string>): number {
+  const direct = values.unused;
+  if (direct !== undefined && direct !== null && direct !== '') {
+    return Number(direct) || 0;
+  }
+  return (Number(values.unusedPortioned) || 0) + (Number(values.unportioned) || 0);
+}
+
+function getSaladUnusedDisplayValue(values: Record<string, number | string>): string | number {
+  if (values.unused !== undefined && values.unused !== null && values.unused !== '') {
+    return values.unused;
+  }
+
+  const hasLegacyUnused =
+    (values.unusedPortioned !== undefined && values.unusedPortioned !== null && values.unusedPortioned !== '') ||
+    (values.unportioned !== undefined && values.unportioned !== null && values.unportioned !== '');
+
+  return hasLegacyUnused ? getSaladUnusedValue(values) : '';
+}
+
 export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormProps) {
   const getItem = (id: string): ItemData => data[id] || { itemId: id, values: {}, inbound: '', order: '', memo: '' };
   const isMobile = useIsMobile();
@@ -23,7 +43,12 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
   const updateField = (itemId: string, key: string, val: string | number) => {
     const current = getItem(itemId);
     const sanitized = typeof val === 'string' ? val.replace(/-/g, '') : (val < 0 ? 0 : val);
-    const updated = { ...current, values: { ...current.values, [key]: sanitized } };
+    const nextValues = { ...current.values, [key]: sanitized };
+    if (itemId === 'f-salad' && key === 'unused') {
+      delete nextValues.unusedPortioned;
+      delete nextValues.unportioned;
+    }
+    const updated = { ...current, values: nextValues };
     if (key === 'inbound') updated.inbound = sanitized;
     if (key === 'order' || key === 'orderKg' || key === 'orderBags') updated.order = sanitized;
     onChange(itemId, updated);
@@ -35,12 +60,12 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
   };
 
   const sd = getItem('f-salad');
-  const sdUnused = Number(sd.values.unusedPortioned) || 0;
+  const sdUnused = getSaladUnusedValue(sd.values);
   const sdRatio = toRatioValue(sd.values.usedRatio);
-  const sdUnport = Number(sd.values.unportioned) || 0;
-  const sdTotal = sdUnused + sdRatio + sdUnport;
+  const sdTotal = sdUnused + sdRatio;
   const sdOrderKg = Number(sd.values.orderKg) || 0;
   const sdOrderRack = sdOrderKg > 0 ? sdOrderKg / 2 : null;
+  const sdUnusedInputValue = getSaladUnusedDisplayValue(sd.values);
   const sdInboundValue = sd.values.inbound ?? '';
 
   const bd = getItem('f-broccoli');
@@ -80,9 +105,8 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
             memo={sd.memo}
             onMemoChange={v => updateMemo('f-salad', v)}
           >
-            <MobileNumField label="미사용(락)" value={sd.values.unusedPortioned} onChange={v => updateField('f-salad', 'unusedPortioned', v)} />
+            <MobileNumField label="미사용(락)" value={sdUnusedInputValue} onChange={v => updateField('f-salad', 'unused', v)} />
             <MobileRatioField label="사용중 비율" value={sdRatio} onChange={v => updateField('f-salad', 'usedRatio', v)} />
-            <MobileNumField label="미소분(락)" value={sd.values.unportioned} onChange={v => updateField('f-salad', 'unportioned', v)} />
             {showInbound && <MobileNumField label="입고분(락)" value={sdInboundValue} onChange={v => updateField('f-salad', 'inbound', v)} />}
             <MobileNumField label="발주량(kg)" value={sd.values.orderKg} onChange={v => updateField('f-salad', 'orderKg', v)} />
             {sdOrderRack !== null && <div className="text-xs text-primary font-medium">= {sdOrderRack}락</div>}
@@ -157,16 +181,12 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     <label className="flex items-center gap-1 text-xs">
                       <span className="text-muted-foreground whitespace-nowrap">미사용(락)</span>
-                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={sd.values.unusedPortioned ?? ''} onChange={e => updateField('f-salad', 'unusedPortioned', e.target.value)} />
+                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={sdUnusedInputValue} onChange={e => updateField('f-salad', 'unused', e.target.value)} />
                     </label>
                     <div className="flex items-center gap-1 text-xs">
                       <span className="text-muted-foreground whitespace-nowrap">사용중 비율</span>
                       <RatioSelector value={sdRatio} onChange={v => updateField('f-salad', 'usedRatio', v)} />
                     </div>
-                    <label className="flex items-center gap-1 text-xs">
-                      <span className="text-muted-foreground whitespace-nowrap">미소분(락)</span>
-                      <Input type="number" min="0" className="w-16 h-7 text-xs px-1" value={sd.values.unportioned ?? ''} onChange={e => updateField('f-salad', 'unportioned', e.target.value)} />
-                    </label>
                     {showInbound && (
                       <label className="flex items-center gap-1 text-xs">
                         <span className="text-muted-foreground whitespace-nowrap">입고분(락)</span>
