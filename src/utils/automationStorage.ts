@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+
 import { AutomationItemData, AutomationRecord, RecorderType } from '@/types';
 import { replaceAutomationRecordsInFirestore } from '@/lib/firestoreSync';
 
@@ -12,7 +14,23 @@ export interface AutomationDraft {
   autoInboundSeeded?: boolean;
 }
 
+const automationListeners = new Set<() => void>();
+let automationRecordsCache: AutomationRecord[] = normalizeAutomationRecordList(readJson(AUTO_RECORDS_KEY, []));
 let automationDraftsCache: Record<string, AutomationDraft> = {};
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    if (typeof localStorage === 'undefined') return fallback;
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function emitAutomationListeners() {
+  automationListeners.forEach((listener) => listener());
+}
 
 function isLegacyAutoFillArtifact(item: AutomationItemData): boolean {
   const keys = Object.keys(item.currentStockValues || {});
@@ -34,10 +52,18 @@ function normalizeAutomationItem(item: AutomationItemData): AutomationItemData {
   };
 }
 
-function normalizeAutomationRecord(record: AutomationRecord): AutomationRecord {
+function normalizeAutomationRecord(record: Partial<AutomationRecord>): AutomationRecord {
   return {
-    ...record,
-    items: record.items.map(normalizeAutomationItem),
+    id: typeof record.id === 'string' ? record.id : crypto.randomUUID(),
+    date: typeof record.date === 'string' ? record.date : '',
+    vendor: record.vendor === 'marketbom' ? 'marketbom' : 'farmers',
+    recorderType: record.recorderType === 'staff' ? 'staff' : 'manager',
+    orderDay: typeof record.orderDay === 'number' ? record.orderDay : Number(record.orderDay ?? 0) || 0,
+    coverDays: Array.isArray(record.coverDays) ? record.coverDays.map((day) => String(day)) : [],
+    items: Array.isArray(record.items) ? record.items.map(normalizeAutomationItem) : [],
+    createdAt: typeof record.createdAt === 'string' ? record.createdAt : new Date().toISOString(),
+    updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : typeof record.createdAt === 'string' ? record.createdAt : new Date().toISOString(),
+    type: 'automation',
   };
 }
 
@@ -50,22 +76,28 @@ function normalizeAutomationDraft(draft: AutomationDraft): AutomationDraft {
   };
 }
 
+function normalizeAutomationRecordList(records: Partial<AutomationRecord>[]): AutomationRecord[] {
+  return records.map((record) => normalizeAutomationRecord(record));
+}
+
 function draftKey(date: string, vendor: string): string {
   return `${date}__${vendor}`;
 }
 
 export function loadAutomationRecords(): AutomationRecord[] {
-  try {
-    const raw = localStorage.getItem(AUTO_RECORDS_KEY);
-    const records = raw ? (JSON.parse(raw) as AutomationRecord[]) : [];
-    const normalized = records.map(normalizeAutomationRecord);
-    if (raw && JSON.stringify(normalized) !== raw) {
-      localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(normalized));
-    }
-    return normalized;
-  } catch {
-    return [];
-  }
+  automationRecordsCache = normalizeAutomationRecordList(automationRecordsCache);
+  return automationRecordsCache;
+}
+
+export function useAutomationRecords(): AutomationRecord[] {
+  return useSyncExternalStore(
+    (listener) => {
+      automationListeners.add(listener);
+      return () => automationListeners.delete(listener);
+    },
+    loadAutomationRecords,
+    loadAutomationRecords,
+  );
 }
 
 function loadAutomationDrafts(): Record<string, AutomationDraft> {
@@ -73,13 +105,28 @@ function loadAutomationDrafts(): Record<string, AutomationDraft> {
 }
 
 export function saveAutomationRecords(records: AutomationRecord[]) {
-  const normalized = records.map(normalizeAutomationRecord);
-  localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(normalized));
-  void replaceAutomationRecordsInFirestore(normalized);
+  automationRecordsCache = normalizeAutomationRecordList(records);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(automationRecordsCache));
+    }
+  } catch {
+    // Keep the in-memory cache even if browser storage is unavailable.
+  }
+  emitAutomationListeners();
+  void replaceAutomationRecordsInFirestore(automationRecordsCache);
 }
 
 export function replaceAutomationRecordsFromRemote(records: AutomationRecord[]) {
-  localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(records.map(normalizeAutomationRecord)));
+  automationRecordsCache = normalizeAutomationRecordList(records);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(automationRecordsCache));
+    }
+  } catch {
+    // Keep the in-memory cache even if browser storage is unavailable.
+  }
+  emitAutomationListeners();
 }
 
 export function addAutomationRecord(record: AutomationRecord) {

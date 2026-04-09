@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { DailyRecord, ItemData, Vendor, RecorderType } from '@/types';
 import { getItemsByVendor, FARMERS_ITEMS } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
-import { addRecord, getRecordsByDate, deleteRecord, loadSettings, saveDraft, loadDraft, deleteDraft } from '@/utils/storage';
+import { addRecord, getRecordsByDate, deleteRecord, loadSettings, saveDraft, loadDraft, deleteDraft, useRecords } from '@/utils/storage';
+import { useAutomationRecords } from '@/utils/automationStorage';
 import { getAutoInboundFromPrevOrder, shouldShowInbound } from '@/utils/inboundLogic';
 import { getKstDateString } from '@/utils/date';
 import { FarmersForm } from '@/components/FarmersForm';
@@ -14,8 +15,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const EXCEPTION_REASONS = ['업체 휴무', '공휴일', '배송 변경', '기타'];
 
-function createBlankItemData(vendor: Vendor, date: string, dayOfWeek: number): Record<string, ItemData> {
-  const autoInbound = getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
+function createBlankItemData(vendor: Vendor, autoInbound: Record<string, number>): Record<string, ItemData> {
   const items = getItemsByVendor(vendor);
   const result: Record<string, ItemData> = {};
 
@@ -40,10 +40,8 @@ function createBlankItemData(vendor: Vendor, date: string, dayOfWeek: number): R
 function mergeAutoInboundDefaults(
   itemData: Record<string, ItemData>,
   vendor: Vendor,
-  date: string,
-  dayOfWeek: number
+  autoInbound: Record<string, number>
 ): { itemData: Record<string, ItemData>; applied: boolean } {
-  const autoInbound = getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
   const next: Record<string, ItemData> = {};
   let applied = false;
 
@@ -80,8 +78,18 @@ export function TodayRecord() {
   const [itemData, setItemData] = useState<Record<string, ItemData>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const autoInboundSeededRef = useRef(false);
+  const records = useRecords();
+  const automationRecords = useAutomationRecords();
 
   const dayOfWeek = getDayOfWeek(date);
+  const autoInbound = useMemo(
+    () => {
+      void records;
+      void automationRecords;
+      return getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
+    },
+    [date, vendor, dayOfWeek, records, automationRecords]
+  );
   const defaultCoverDays = getCoverDays(vendor, dayOfWeek);
   const [coverDaysInput, setCoverDaysInput] = useState(defaultCoverDays);
   const orderDays = getOrderDays(vendor);
@@ -110,7 +118,7 @@ export function TodayRecord() {
       autoInboundSeededRef.current = !!draft.autoInboundSeeded;
       let nextItemData = draft.itemData;
       if (showInbound && !draft.autoInboundSeeded) {
-        const merged = mergeAutoInboundDefaults(draft.itemData, vendor, date, dayOfWeek);
+        const merged = mergeAutoInboundDefaults(draft.itemData, vendor, autoInbound);
         nextItemData = merged.itemData;
         if (merged.applied) {
           autoInboundSeededRef.current = true;
@@ -132,14 +140,27 @@ export function TodayRecord() {
       const dataMap: Record<string, ItemData> = {};
       existing.items.forEach(item => { dataMap[item.itemId] = item; });
       autoInboundSeededRef.current = false;
-      setItemData(dataMap);
+      let nextItemData = dataMap;
+      if (showInbound) {
+        const merged = mergeAutoInboundDefaults(dataMap, vendor, autoInbound);
+        if (merged.applied) {
+          nextItemData = merged.itemData;
+          autoInboundSeededRef.current = true;
+          saveDraft(date, vendor, {
+            itemData: nextItemData,
+            recorder: existing.recorderType,
+            autoInboundSeeded: true,
+          });
+        }
+      }
+      setItemData(nextItemData);
       setEditingId(existing.id);
       setRecorder(existing.recorderType);
       setCoverDaysInput(existing.coverDays?.join(',') || getCoverDays(vendor, dayOfWeek));
       return;
     }
 
-    const autoFilled = showInbound ? createBlankItemData(vendor, date, dayOfWeek) : {};
+    const autoFilled = showInbound ? createBlankItemData(vendor, autoInbound) : {};
     autoInboundSeededRef.current = false;
     setItemData(autoFilled);
     setEditingId(null);
@@ -150,7 +171,7 @@ export function TodayRecord() {
       autoInboundSeededRef.current = true;
       saveDraft(date, vendor, { itemData: autoFilled, recorder: 'manager', autoInboundSeeded: true });
     }
-  }, [date, vendor, dayOfWeek, showInbound]);
+  }, [date, vendor, dayOfWeek, showInbound, autoInbound]);
 
   const handleItemChange = useCallback((itemId: string, d: ItemData) => {
       setItemData(prev => {

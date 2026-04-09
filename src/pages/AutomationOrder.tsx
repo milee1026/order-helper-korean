@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Vendor, RecorderType, AutomationItemData, AutomationRecord } from '@/types';
 import { getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { useRecords, useSettings } from '@/utils/storage';
+import { useAutomationRecords } from '@/utils/automationStorage';
 import { getRecommendations } from '@/utils/recommendations';
 import { addAutomationRecord, deleteAutomationDraft, getAutomationRecordsByDate, loadAutomationDraft, saveAutomationDraft } from '@/utils/automationStorage';
 import { getItemsByVendor } from '@/config/items';
@@ -16,8 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const EXCEPTION_REASONS = ['업체 휴무', '공휴일', '배송 변경', '기타'];
 
-function createBlankAutoItems(vendor: Vendor, date: string, dayOfWeek: number): Record<string, AutomationItemData> {
-  const autoInbound = getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
+function createBlankAutoItems(vendor: Vendor, autoInbound: Record<string, number>): Record<string, AutomationItemData> {
   const items = getItemsByVendor(vendor);
   const result: Record<string, AutomationItemData> = {};
 
@@ -46,10 +46,8 @@ function createBlankAutoItems(vendor: Vendor, date: string, dayOfWeek: number): 
 function mergeAutoInboundDefaults(
   autoItems: Record<string, AutomationItemData>,
   vendor: Vendor,
-  date: string,
-  dayOfWeek: number
+  autoInbound: Record<string, number>
 ): { autoItems: Record<string, AutomationItemData>; applied: boolean } {
-  const autoInbound = getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
   const next: Record<string, AutomationItemData> = {};
   let applied = false;
 
@@ -94,6 +92,15 @@ export function AutomationOrder() {
 
   // Load historical records for recommendations
   const records = useRecords();
+  const automationRecords = useAutomationRecords();
+  const autoInbound = useMemo(
+    () => {
+      void records;
+      void automationRecords;
+      return getAutoInboundFromPrevOrder(date, vendor, dayOfWeek);
+    },
+    [date, vendor, dayOfWeek, records, automationRecords]
+  );
   const recommendations = useMemo(
     () => getRecommendations(records, vendor, dayOfWeek, settings),
     [records, vendor, dayOfWeek, settings]
@@ -107,7 +114,7 @@ export function AutomationOrder() {
       autoInboundSeededRef.current = !!draft.autoInboundSeeded;
       let nextAutoItems = draft.autoItems;
       if (showInbound && !draft.autoInboundSeeded) {
-        const merged = mergeAutoInboundDefaults(draft.autoItems, vendor, date, dayOfWeek);
+        const merged = mergeAutoInboundDefaults(draft.autoItems, vendor, autoInbound);
         nextAutoItems = merged.autoItems;
         if (merged.applied) {
           autoInboundSeededRef.current = true;
@@ -132,7 +139,23 @@ export function AutomationOrder() {
       const dataMap: Record<string, AutomationItemData> = {};
       rec.items.forEach(item => { dataMap[item.itemId] = item; });
       autoInboundSeededRef.current = false;
-      setAutoItems(dataMap);
+      let nextAutoItems = dataMap;
+      if (showInbound) {
+        const merged = mergeAutoInboundDefaults(dataMap, vendor, autoInbound);
+        if (merged.applied) {
+          nextAutoItems = merged.autoItems;
+          autoInboundSeededRef.current = true;
+          saveAutomationDraft(date, vendor, {
+            autoItems: nextAutoItems,
+            recorder: rec.recorderType,
+            coverDaysInput: rec.coverDays?.length ? rec.coverDays.join(',') : '',
+            exceptionNoDelivery: false,
+            exceptionReason: '',
+            autoInboundSeeded: true,
+          });
+        }
+      }
+      setAutoItems(nextAutoItems);
       setEditingId(rec.id);
       setRecorder(rec.recorderType);
       if (rec.coverDays && rec.coverDays.length > 0) {
@@ -143,7 +166,7 @@ export function AutomationOrder() {
       setExceptionNoDelivery(false);
       setExceptionReason('');
     } else {
-      const autoFilled = showInbound ? createBlankAutoItems(vendor, date, dayOfWeek) : {};
+      const autoFilled = showInbound ? createBlankAutoItems(vendor, autoInbound) : {};
       autoInboundSeededRef.current = false;
       setAutoItems(autoFilled);
       setEditingId(null);
@@ -164,7 +187,7 @@ export function AutomationOrder() {
         });
       }
     }
-  }, [date, vendor, dayOfWeek, showInbound]);
+  }, [date, vendor, dayOfWeek, showInbound, autoInbound]);
 
   const handleItemChange = (itemId: string, data: AutomationItemData) => {
     setAutoItems(prev => {
