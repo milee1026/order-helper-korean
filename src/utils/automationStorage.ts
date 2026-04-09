@@ -60,7 +60,11 @@ function normalizeAutomationRecord(record: Partial<AutomationRecord>): Automatio
     recorderType: record.recorderType === 'staff' ? 'staff' : 'manager',
     orderDay: typeof record.orderDay === 'number' ? record.orderDay : Number(record.orderDay ?? 0) || 0,
     coverDays: Array.isArray(record.coverDays) ? record.coverDays.map((day) => String(day)) : [],
-    items: Array.isArray(record.items) ? record.items.map(normalizeAutomationItem) : [],
+    items: Array.isArray(record.items)
+      ? record.items
+          .filter((item): item is AutomationItemData => typeof item === 'object' && item !== null)
+          .map(normalizeAutomationItem)
+      : [],
     createdAt: typeof record.createdAt === 'string' ? record.createdAt : new Date().toISOString(),
     updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : typeof record.createdAt === 'string' ? record.createdAt : new Date().toISOString(),
     type: 'automation',

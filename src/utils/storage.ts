@@ -68,13 +68,16 @@ function normalizeRecord(record: Partial<DailyRecord>): DailyRecord {
     orderDay: typeof record.orderDay === 'number' ? record.orderDay : Number(record.orderDay ?? 0) || 0,
     coverDays: Array.isArray(record.coverDays) ? record.coverDays.map((day) => String(day)) : [],
     items: Array.isArray(record.items)
-      ? record.items.map((item) => ({
-          ...item,
-          values: typeof item.values === 'object' && item.values !== null ? { ...item.values } : {},
-          inbound: item.inbound ?? '',
-          order: item.order ?? '',
-          memo: typeof item.memo === 'string' ? item.memo : '',
-        }))
+      ? record.items
+          .filter((item): item is NonNullable<typeof item> => typeof item === 'object' && item !== null)
+          .map((item) => ({
+            ...item,
+            itemId: typeof item.itemId === 'string' ? item.itemId : '',
+            values: typeof item.values === 'object' && item.values !== null ? { ...item.values } : {},
+            inbound: item.inbound ?? '',
+            order: item.order ?? '',
+            memo: typeof item.memo === 'string' ? item.memo : '',
+          }))
       : [],
     createdAt,
     updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : createdAt,
