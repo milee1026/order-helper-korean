@@ -10,6 +10,7 @@ export interface DraftData {
   itemData: Record<string, ItemData>;
   recorder: RecorderType;
   autoInboundSeeded?: boolean;
+  autoInboundSignature?: string;
 }
 
 export const defaultSettings: AppSettings = {
@@ -182,9 +183,15 @@ export function saveSettings(settings: AppSettings) {
 
 export function saveDraft(date: string, vendor: string, draft: DraftData) {
   try {
+    const key = draftKey(date, vendor);
+    const current = draftsCache[key];
     draftsCache = {
       ...draftsCache,
-      [draftKey(date, vendor)]: draft,
+      [key]: {
+        ...(current ?? {}),
+        ...draft,
+        autoInboundSignature: draft.autoInboundSignature ?? current?.autoInboundSignature,
+      },
     };
     emit(draftListeners);
   } catch {

@@ -95,3 +95,12 @@ export function getAutoInboundFromPrevOrder(
 
   return result;
 }
+
+export function getAutoInboundSignature(autoInbound: Record<string, number>): string {
+  return JSON.stringify(
+    Object.entries(autoInbound)
+      .filter(([, value]) => value !== undefined && value !== null)
+      .map(([itemId, value]) => [itemId, Number(value) || 0])
+      .sort(([left], [right]) => left.localeCompare(right))
+  );
+}

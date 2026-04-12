@@ -12,6 +12,7 @@ export interface AutomationDraft {
   exceptionNoDelivery: boolean;
   exceptionReason: string;
   autoInboundSeeded?: boolean;
+  autoInboundSignature?: string;
 }
 
 const automationListeners = new Set<() => void>();
@@ -150,9 +151,16 @@ export function loadAutomationDraft(date: string, vendor: string): AutomationDra
 }
 
 export function saveAutomationDraft(date: string, vendor: string, draft: AutomationDraft) {
+  const key = draftKey(date, vendor);
+  const current = automationDraftsCache[key];
+  const baseDraft = current ?? ({} as AutomationDraft);
   automationDraftsCache = {
     ...automationDraftsCache,
-    [draftKey(date, vendor)]: normalizeAutomationDraft(draft),
+    [key]: normalizeAutomationDraft({
+      ...baseDraft,
+      ...draft,
+      autoInboundSignature: draft.autoInboundSignature ?? current?.autoInboundSignature,
+    }),
   };
 }
 

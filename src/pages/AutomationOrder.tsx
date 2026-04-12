@@ -6,7 +6,7 @@ import { useAutomationRecords } from '@/utils/automationStorage';
 import { getRecommendations } from '@/utils/recommendations';
 import { addAutomationRecord, deleteAutomationDraft, getAutomationRecordsByDate, loadAutomationDraft, saveAutomationDraft } from '@/utils/automationStorage';
 import { getItemsByVendor } from '@/config/items';
-import { getAutoInboundFromPrevOrder, shouldShowInbound } from '@/utils/inboundLogic';
+import { getAutoInboundFromPrevOrder, getAutoInboundSignature, shouldShowInbound } from '@/utils/inboundLogic';
 import { getKstDateString } from '@/utils/date';
 import { AutoFarmersForm } from '@/components/AutoFarmersForm';
 import { AutoMarketbomForm } from '@/components/AutoMarketbomForm';
@@ -101,6 +101,7 @@ export function AutomationOrder() {
     },
     [date, vendor, dayOfWeek, records, automationRecords]
   );
+  const autoInboundSignature = useMemo(() => getAutoInboundSignature(autoInbound), [autoInbound]);
   const recommendations = useMemo(
     () => getRecommendations(records, vendor, dayOfWeek, settings),
     [records, vendor, dayOfWeek, settings]
@@ -111,17 +112,18 @@ export function AutomationOrder() {
     const existing = getAutomationRecordsByDate(date, vendor);
 
     if (draft) {
-      autoInboundSeededRef.current = !!draft.autoInboundSeeded;
+      autoInboundSeededRef.current = !!draft.autoInboundSeeded || draft.autoInboundSignature === autoInboundSignature;
       let nextAutoItems = draft.autoItems;
-      if (showInbound && !draft.autoInboundSeeded) {
+      if (showInbound && draft.autoInboundSignature !== autoInboundSignature) {
         const merged = mergeAutoInboundDefaults(draft.autoItems, vendor, autoInbound);
         nextAutoItems = merged.autoItems;
-        if (merged.applied) {
-          autoInboundSeededRef.current = true;
+        if (merged.applied || draft.autoInboundSignature !== autoInboundSignature) {
+          autoInboundSeededRef.current = merged.applied || autoInboundSeededRef.current;
           saveAutomationDraft(date, vendor, {
             ...draft,
             autoItems: nextAutoItems,
-            autoInboundSeeded: true,
+            autoInboundSeeded: autoInboundSeededRef.current,
+            autoInboundSignature,
           });
         }
       }
@@ -152,6 +154,7 @@ export function AutomationOrder() {
             exceptionNoDelivery: false,
             exceptionReason: '',
             autoInboundSeeded: true,
+            autoInboundSignature,
           });
         }
       }
@@ -184,10 +187,11 @@ export function AutomationOrder() {
           exceptionNoDelivery: false,
           exceptionReason: '',
           autoInboundSeeded: true,
+          autoInboundSignature,
         });
       }
     }
-  }, [date, vendor, dayOfWeek, showInbound, autoInbound]);
+  }, [date, vendor, dayOfWeek, showInbound, autoInbound, autoInboundSignature]);
 
   const handleItemChange = (itemId: string, data: AutomationItemData) => {
     setAutoItems(prev => {

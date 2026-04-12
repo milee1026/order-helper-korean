@@ -4,7 +4,7 @@ import { getItemsByVendor, FARMERS_ITEMS } from '@/config/items';
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { addRecord, getRecordsByDate, deleteRecord, loadSettings, saveDraft, loadDraft, deleteDraft, useRecords } from '@/utils/storage';
 import { useAutomationRecords } from '@/utils/automationStorage';
-import { getAutoInboundFromPrevOrder, shouldShowInbound } from '@/utils/inboundLogic';
+import { getAutoInboundFromPrevOrder, getAutoInboundSignature, shouldShowInbound } from '@/utils/inboundLogic';
 import { getKstDateString } from '@/utils/date';
 import { FarmersForm } from '@/components/FarmersForm';
 import { MarketbomForm } from '@/components/MarketbomForm';
@@ -90,6 +90,7 @@ export function TodayRecord() {
     },
     [date, vendor, dayOfWeek, records, automationRecords]
   );
+  const autoInboundSignature = useMemo(() => getAutoInboundSignature(autoInbound), [autoInbound]);
   const defaultCoverDays = getCoverDays(vendor, dayOfWeek);
   const [coverDaysInput, setCoverDaysInput] = useState(defaultCoverDays);
   const orderDays = getOrderDays(vendor);
@@ -115,17 +116,18 @@ export function TodayRecord() {
     const existing = getRecordsByDate(date).find(r => r.vendor === vendor);
 
     if (draft) {
-      autoInboundSeededRef.current = !!draft.autoInboundSeeded;
+      autoInboundSeededRef.current = !!draft.autoInboundSeeded || draft.autoInboundSignature === autoInboundSignature;
       let nextItemData = draft.itemData;
-      if (showInbound && !draft.autoInboundSeeded) {
+      if (showInbound && draft.autoInboundSignature !== autoInboundSignature) {
         const merged = mergeAutoInboundDefaults(draft.itemData, vendor, autoInbound);
         nextItemData = merged.itemData;
-        if (merged.applied) {
-          autoInboundSeededRef.current = true;
+        if (merged.applied || draft.autoInboundSignature !== autoInboundSignature) {
+          autoInboundSeededRef.current = merged.applied || autoInboundSeededRef.current;
           saveDraft(date, vendor, {
             itemData: nextItemData,
             recorder: draft.recorder,
-            autoInboundSeeded: true,
+            autoInboundSeeded: autoInboundSeededRef.current,
+            autoInboundSignature,
           });
         }
       }
@@ -150,6 +152,7 @@ export function TodayRecord() {
             itemData: nextItemData,
             recorder: existing.recorderType,
             autoInboundSeeded: true,
+            autoInboundSignature,
           });
         }
       }
@@ -169,17 +172,17 @@ export function TodayRecord() {
 
     if (showInbound && Object.values(autoFilled).some(item => item.inbound !== '' || Object.keys(item.values || {}).length > 0)) {
       autoInboundSeededRef.current = true;
-      saveDraft(date, vendor, { itemData: autoFilled, recorder: 'manager', autoInboundSeeded: true });
+      saveDraft(date, vendor, { itemData: autoFilled, recorder: 'manager', autoInboundSeeded: true, autoInboundSignature });
     }
-  }, [date, vendor, dayOfWeek, showInbound, autoInbound]);
+  }, [date, vendor, dayOfWeek, showInbound, autoInbound, autoInboundSignature]);
 
   const handleItemChange = useCallback((itemId: string, d: ItemData) => {
       setItemData(prev => {
         const next = { ...prev, [itemId]: { ...d, itemId } };
-      saveDraft(date, vendor, { itemData: next, recorder, autoInboundSeeded: autoInboundSeededRef.current });
+      saveDraft(date, vendor, { itemData: next, recorder, autoInboundSeeded: autoInboundSeededRef.current, autoInboundSignature });
         return next;
       });
-  }, [date, vendor, recorder]);
+  }, [date, vendor, recorder, autoInboundSignature]);
 
   const handleSave = () => {
     const items = getItemsByVendor(vendor);
@@ -258,7 +261,7 @@ export function TodayRecord() {
             onChange={e => {
               const nextRecorder = e.target.value as RecorderType;
               setRecorder(nextRecorder);
-              saveDraft(date, vendor, { itemData, recorder: nextRecorder, autoInboundSeeded: autoInboundSeededRef.current });
+              saveDraft(date, vendor, { itemData, recorder: nextRecorder, autoInboundSeeded: autoInboundSeededRef.current, autoInboundSignature });
             }}
           >
             <option value="manager">매니저</option>
