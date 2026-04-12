@@ -85,6 +85,31 @@ function normalizeAutomationRecordList(records: Partial<AutomationRecord>[]): Au
   return records.map((record) => normalizeAutomationRecord(record));
 }
 
+function recordTimestamp(record: Pick<AutomationRecord, 'createdAt' | 'updatedAt'>) {
+  return Date.parse(record.updatedAt || record.createdAt || '') || 0;
+}
+
+function mergeAutomationRecords(current: AutomationRecord[], incoming: AutomationRecord[]): AutomationRecord[] {
+  const next = current.map(normalizeAutomationRecord);
+  const indexById = new Map(next.map((record, index) => [record.id, index]));
+
+  for (const record of incoming.map(normalizeAutomationRecord)) {
+    const index = indexById.get(record.id);
+    if (index === undefined) {
+      indexById.set(record.id, next.length);
+      next.push(record);
+      continue;
+    }
+
+    const existing = next[index];
+    if (recordTimestamp(record) >= recordTimestamp(existing)) {
+      next[index] = record;
+    }
+  }
+
+  return next;
+}
+
 function draftKey(date: string, vendor: string): string {
   return `${date}__${vendor}`;
 }
@@ -123,6 +148,18 @@ export function saveAutomationRecords(records: AutomationRecord[]) {
 
 export function replaceAutomationRecordsFromRemote(records: AutomationRecord[]) {
   automationRecordsCache = normalizeAutomationRecordList(records);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(automationRecordsCache));
+    }
+  } catch {
+    // Keep the in-memory cache even if browser storage is unavailable.
+  }
+  emitAutomationListeners();
+}
+
+export function mergeAutomationRecordsFromRemote(records: AutomationRecord[]) {
+  automationRecordsCache = mergeAutomationRecords(automationRecordsCache, records);
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(automationRecordsCache));

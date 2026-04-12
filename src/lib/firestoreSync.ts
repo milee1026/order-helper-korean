@@ -122,25 +122,14 @@ async function readLocalState() {
   };
 }
 
-async function replaceLocalState(payload: {
-  records?: DailyRecord[];
-  settings?: AppSettings;
-  automationRecords?: AutomationRecord[];
-}) {
+async function mergeLocalRecords(records: DailyRecord[]) {
   const storage = await import('@/utils/storage');
+  storage.mergeRecordsFromRemote(records);
+}
+
+async function mergeLocalAutomationRecords(records: AutomationRecord[]) {
   const automationStorage = await import('@/utils/automationStorage');
-
-  if (payload.records) {
-    storage.replaceRecordsFromRemote(payload.records);
-  }
-
-  if (payload.settings) {
-    storage.replaceSettingsFromRemote(payload.settings);
-  }
-
-  if (payload.automationRecords) {
-    automationStorage.replaceAutomationRecordsFromRemote(payload.automationRecords);
-  }
+  automationStorage.mergeAutomationRecordsFromRemote(records);
 }
 
 async function replaceRemoteRecords(uid: string, records: DailyRecord[]) {
@@ -214,47 +203,50 @@ export async function connectFirestoreSession(uid: string): Promise<() => void> 
   activeUid = uid;
 
   const local = await readLocalState();
+  const storage = await import('@/utils/storage');
+  const automationStorage = await import('@/utils/automationStorage');
   const [remoteRecords, remoteSettings, remoteAutomationRecords] = await Promise.all([
     loadRemoteRecords(uid),
     loadRemoteSettings(uid),
     loadRemoteAutomationRecords(uid),
   ]);
 
-  if (remoteRecords.length === 0 && local.records.length > 0) {
-    await replaceRemoteRecords(uid, local.records);
+  storage.mergeRecordsFromRemote(remoteRecords);
+  automationStorage.mergeAutomationRecordsFromRemote(remoteAutomationRecords);
+
+  if (remoteRecords.length > 0 || local.records.length > 0) {
+    await replaceRemoteRecords(uid, storage.loadRecords());
   }
 
+  if (remoteAutomationRecords.length > 0 || local.automationRecords.length > 0) {
+    await replaceRemoteAutomationRecords(uid, automationStorage.loadAutomationRecords());
+  }
+
+  const settings = remoteSettings ?? local.settings;
+  storage.replaceSettingsFromRemote(settings);
   if (remoteSettings === null) {
-    await replaceRemoteSettings(uid, local.settings);
+    await replaceRemoteSettings(uid, settings);
   }
-
-  if (remoteAutomationRecords.length === 0 && local.automationRecords.length > 0) {
-    await replaceRemoteAutomationRecords(uid, local.automationRecords);
-  }
-
-  await replaceLocalState({
-    records: remoteRecords.length > 0 ? remoteRecords : local.records,
-    settings: remoteSettings ?? local.settings,
-    automationRecords: remoteAutomationRecords.length > 0 ? remoteAutomationRecords : local.automationRecords,
-  });
 
   const unsubscribeRecords = onSnapshot(recordsRef(uid), (snapshot) => {
     const records = snapshot.docs.map((item) =>
       normalizeRecord({ id: item.id, ...(item.data() as Partial<DailyRecord>) })
     );
-    void replaceLocalState({ records });
+    if (records.length === 0) return;
+    void mergeLocalRecords(records);
   });
 
   const unsubscribeSettings = onSnapshot(settingsDocRef(uid), (snapshot) => {
     if (!snapshot.exists()) return;
-    void replaceLocalState({ settings: normalizeSettings(snapshot.data() as Partial<AppSettings>) });
+    storage.replaceSettingsFromRemote(normalizeSettings(snapshot.data() as Partial<AppSettings>));
   });
 
   const unsubscribeAutomation = onSnapshot(automationRef(uid), (snapshot) => {
     const records = snapshot.docs.map((item) =>
       normalizeAutomationRecord({ id: item.id, ...(item.data() as Partial<AutomationRecord>) })
     );
-    void replaceLocalState({ automationRecords: records });
+    if (records.length === 0) return;
+    void mergeLocalAutomationRecords(records);
   });
 
   unsubscribeSession = () => {
