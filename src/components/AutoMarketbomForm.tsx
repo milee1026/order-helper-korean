@@ -14,7 +14,8 @@ interface Props {
   recommendations: Record<string, { defaultOrderCandidate: number; minThresholdCandidate: number }>;
   settings: AppSettings;
   showInbound?: boolean;
-  coverDaysAdjustment?: number;
+  coverDaysCount?: number;
+  defaultCoverDaysCount?: number;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -73,9 +74,11 @@ function computeMarketbomStock(itemId: string, values: Record<string, number | s
   return (Number(values.unused) || 0) + (Number(values.usedRatio) || 0);
 }
 
-export function AutoMarketbomForm({ data, onChange, recommendations, settings, showInbound = true, coverDaysAdjustment = 1 }: Props) {
+export function AutoMarketbomForm({ data, onChange, recommendations, settings, showInbound = true, coverDaysCount = 0, defaultCoverDaysCount = 0 }: Props) {
   const isMobile = useIsMobile();
-  const safeAdjustment = Number.isFinite(coverDaysAdjustment) && coverDaysAdjustment > 0 ? coverDaysAdjustment : 1;
+  const safeDefaultDays = Number.isFinite(defaultCoverDaysCount) && defaultCoverDaysCount > 0 ? defaultCoverDaysCount : 1;
+  const safeCoverDays = Number.isFinite(coverDaysCount) && coverDaysCount > 0 ? coverDaysCount : safeDefaultDays;
+  const coverDayDelta = safeCoverDays - safeDefaultDays;
 
   const updateVal = (itemId: string, key: string, val: string | number) => {
     const rec = recommendations[itemId];
@@ -85,7 +88,7 @@ export function AutoMarketbomForm({ data, onChange, recommendations, settings, s
     const stock = computeMarketbomStock(itemId, newValues, settings);
     const defOrd = rec?.defaultOrderCandidate || current.defaultOrderCandidate;
     const minThr = rec?.minThresholdCandidate || current.minThresholdCandidate;
-    const rawRecommended = computeRecommendedOrder(stock, defOrd, minThr, safeAdjustment);
+    const rawRecommended = computeRecommendedOrder(stock, defOrd, minThr, safeCoverDays, safeDefaultDays);
     const recommended = normalizeOrderQuantity(itemId, rawRecommended);
     onChange(itemId, {
       ...current,
@@ -128,7 +131,8 @@ export function AutoMarketbomForm({ data, onChange, recommendations, settings, s
                 {items.map(item => {
                   const rec = recommendations[item.id];
                   const d = getAutoItem(data, item.id, rec);
-                  const status = hasItemInput(d) ? getStockStatus(d.currentStock, d.minThresholdCandidate * safeAdjustment) : '-';
+                  const adjustedThreshold = Math.max(0, d.minThresholdCandidate + (coverDayDelta * Math.max(1, Math.ceil((d.defaultOrderCandidate || 1) / safeDefaultDays))));
+                  const status = hasItemInput(d) ? getStockStatus(d.currentStock, adjustedThreshold) : '-';
                   return (
                     <div key={item.id} className="border rounded bg-background">
                       <div className="px-3 py-1.5 bg-muted/30 border-b flex items-center justify-between">
@@ -161,8 +165,8 @@ export function AutoMarketbomForm({ data, onChange, recommendations, settings, s
                         <div className="bg-muted/50 rounded p-2 space-y-1 text-xs">
                           <div className="flex justify-between"><span className="text-muted-foreground">{item.totalLabel || '현재 재고'}</span><b>{hasItemInput(d) ? round2(d.currentStock) : '-'}</b></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">평균발주량</span><span>{hasItemInput(d) ? fmtWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id)) : '-'}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">최소재고량</span><span>{hasItemInput(d) ? fmtWithUnit(d.minThresholdCandidate * safeAdjustment, getStockUnit(item.id)) : '-'}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">추천 발주량</span><b className="text-primary">{hasItemInput(d) ? fmtWithUnit(normalizeOrderQuantity(item.id, computeRecommendedOrder(d.currentStock, d.defaultOrderCandidate, d.minThresholdCandidate, safeAdjustment)), getOrderUnit(item.id)) : '-'}</b></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">최소재고량</span><span>{hasItemInput(d) ? fmtWithUnit(adjustedThreshold, getStockUnit(item.id)) : '-'}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">추천 발주량</span><b className="text-primary">{hasItemInput(d) ? fmtWithUnit(normalizeOrderQuantity(item.id, computeRecommendedOrder(d.currentStock, d.defaultOrderCandidate, d.minThresholdCandidate, safeCoverDays, safeDefaultDays)), getOrderUnit(item.id)) : '-'}</b></div>
                         </div>
                         <label className="flex items-center justify-between gap-2 text-xs">
                           <span className="text-muted-foreground">메모</span>
@@ -193,7 +197,8 @@ export function AutoMarketbomForm({ data, onChange, recommendations, settings, s
                   {items.map(item => {
                     const rec = recommendations[item.id];
                     const d = getAutoItem(data, item.id, rec);
-                    const status = hasItemInput(d) ? getStockStatus(d.currentStock, d.minThresholdCandidate * safeAdjustment) : '-';
+                    const adjustedThreshold = Math.max(0, d.minThresholdCandidate + (coverDayDelta * Math.max(1, Math.ceil((d.defaultOrderCandidate || 1) / safeDefaultDays))));
+                    const status = hasItemInput(d) ? getStockStatus(d.currentStock, adjustedThreshold) : '-';
                     return (
                       <tr key={item.id} className="hover:bg-accent/30">
                         <td className="border px-1 py-1">
@@ -230,8 +235,8 @@ export function AutoMarketbomForm({ data, onChange, recommendations, settings, s
                         </td>
                         <td className="border px-1 py-1 text-center"><StatusBadge status={status} /></td>
                         <td className="border px-1 py-1 text-center font-mono">{hasItemInput(d) ? fmtWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id)) : '-'}</td>
-                        <td className="border px-1 py-1 text-center font-mono">{hasItemInput(d) ? fmtWithUnit(d.minThresholdCandidate * safeAdjustment, getStockUnit(item.id)) : '-'}</td>
-                        <td className="border px-1 py-1 text-center font-mono font-medium text-primary">{hasItemInput(d) ? fmtWithUnit(normalizeOrderQuantity(item.id, computeRecommendedOrder(d.currentStock, d.defaultOrderCandidate, d.minThresholdCandidate, safeAdjustment)), getOrderUnit(item.id)) : '-'}</td>
+                        <td className="border px-1 py-1 text-center font-mono">{hasItemInput(d) ? fmtWithUnit(adjustedThreshold, getStockUnit(item.id)) : '-'}</td>
+                        <td className="border px-1 py-1 text-center font-mono font-medium text-primary">{hasItemInput(d) ? fmtWithUnit(normalizeOrderQuantity(item.id, computeRecommendedOrder(d.currentStock, d.defaultOrderCandidate, d.minThresholdCandidate, safeCoverDays, safeDefaultDays)), getOrderUnit(item.id)) : '-'}</td>
                         <td className="border px-1 py-1 text-center">
                           <Input type="number" min="0" className="w-14 h-6 text-xs px-1 border-primary mx-auto" value={d.finalOrder || ''} onChange={e => updateFinal(item.id, Number(e.target.value.replace(/-/g, '')) || 0)} />
                         </td>

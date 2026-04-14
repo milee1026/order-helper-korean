@@ -99,11 +99,6 @@ export function AutomationOrder() {
   const defaultCoverDaysCount = useMemo(() => countCoverDays(defaultCoverDays), [defaultCoverDays]);
   const effectiveCoverDaysInput = coverDaysInput.trim() ? coverDaysInput : defaultCoverDays;
   const coverDaysCount = useMemo(() => countCoverDays(effectiveCoverDaysInput), [effectiveCoverDaysInput]);
-  const coverDaysAdjustment = useMemo(() => {
-    if (defaultCoverDaysCount <= 0) return 1;
-    const ratio = coverDaysCount / defaultCoverDaysCount;
-    return Number.isFinite(ratio) && ratio > 0 ? Math.max(1, ratio) : 1;
-  }, [coverDaysCount, defaultCoverDaysCount]);
 
   // Inbound visibility
   const showInbound = shouldShowInbound(vendor, dayOfWeek, exceptionNoDelivery);
@@ -251,7 +246,8 @@ export function AutomationOrder() {
             d.currentStock,
             d.defaultOrderCandidate,
             d.minThresholdCandidate,
-            coverDaysAdjustment
+            coverDaysCount,
+            defaultCoverDaysCount
           )
         ),
       };
@@ -404,7 +400,8 @@ export function AutomationOrder() {
           recommendations={recommendations}
           settings={settings}
           showInbound={showInbound}
-          coverDaysAdjustment={coverDaysAdjustment}
+          coverDaysCount={coverDaysCount}
+          defaultCoverDaysCount={defaultCoverDaysCount}
         />
       ) : (
         <AutoMarketbomForm
@@ -413,7 +410,8 @@ export function AutomationOrder() {
           recommendations={recommendations}
           settings={settings}
           showInbound={showInbound}
-          coverDaysAdjustment={coverDaysAdjustment}
+          coverDaysCount={coverDaysCount}
+          defaultCoverDaysCount={defaultCoverDaysCount}
         />
       )}
 

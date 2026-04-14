@@ -67,16 +67,20 @@ export function computeRecommendedOrder(
   currentStock: number,
   defaultOrderCandidate: number,
   minThresholdCandidate: number,
-  coverDaysAdjustment = 1
+  coverDaysCount = 0,
+  defaultCoverDaysCount = 0
 ): number {
-  const safeAdjustment = Number.isFinite(coverDaysAdjustment) && coverDaysAdjustment > 0 ? coverDaysAdjustment : 1;
+  const safeDefaultDays = Number.isFinite(defaultCoverDaysCount) && defaultCoverDaysCount > 0 ? defaultCoverDaysCount : 1;
+  const safeCoverDays = Number.isFinite(coverDaysCount) && coverDaysCount > 0 ? coverDaysCount : safeDefaultDays;
   if (defaultOrderCandidate <= 0) return 0;
-  const adjustedDefault = defaultOrderCandidate * safeAdjustment;
-  const adjustedThreshold = minThresholdCandidate * safeAdjustment;
+  const orderPerDay = Math.max(1, Math.ceil(defaultOrderCandidate / safeDefaultDays));
+  const stockPerDay = Math.max(1, Math.ceil(minThresholdCandidate / safeDefaultDays));
+  const dayDelta = safeCoverDays - safeDefaultDays;
+  const adjustedDefault = Math.max(0, defaultOrderCandidate + (dayDelta * orderPerDay));
+  const adjustedThreshold = Math.max(0, minThresholdCandidate + (dayDelta * stockPerDay));
   if (currentStock <= adjustedThreshold) return adjustedDefault;
   // Stock is above threshold - suggest reduced or zero
   if (currentStock > adjustedThreshold * 1.5) return 0;
-  // Keep the middle zone conservative so longer cover-days still increase the recommendation.
   return Math.max(0, Math.ceil(adjustedDefault * 0.75));
 }
 
