@@ -66,7 +66,7 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
   const sdOrderKg = Number(sd.values.orderKg) || 0;
   const sdOrderRack = sdOrderKg > 0 ? sdOrderKg / 2 : null;
   const sdUnusedInputValue = getSaladUnusedDisplayValue(sd.values);
-  const sdInboundValue = sd.values.inbound ?? '';
+  const sdInboundValue = sd.values.inbound ?? sd.inbound ?? '';
 
   const bd = getItem('f-broccoli');
   const bdUnused = Number(bd.values.unusedBlanched) || 0;
@@ -83,7 +83,7 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
   const pdUntrimmedKg = Number(pd.values.untrimmedKg) || 0;
   const pdUntrimmedConv = (pdUntrimmedKg / 5) * 3;
   const pdTotal = pdUnused + pdRatio + pdUntrimmedConv;
-  const pdInboundValue = pd.values.inbound ?? '';
+  const pdInboundValue = pd.values.inbound ?? pd.inbound ?? '';
 
   const cd = getItem('f-chive');
   const cdUnused = Number(cd.values.unusedPortioned) || 0;
@@ -91,7 +91,7 @@ export function FarmersForm({ data, onChange, showInbound = true }: FarmersFormP
   const cdUnportBags = Number(cd.values.unportionedBags) || 0;
   const cdUnportConv = cdUnportBags * 2;
   const cdTotal = cdUnused + cdRatio + cdUnportConv;
-  const cdInboundValue = cd.values.inbound ?? '';
+  const cdInboundValue = cd.values.inbound ?? cd.inbound ?? '';
 
   return (
     <div>

@@ -27,6 +27,7 @@ function createBlankItemData(vendor: Vendor, autoInbound: Record<string, number>
       if (vendor === 'farmers' && item.id === 'f-broccoli') {
         next.values = { ...next.values, inboundKg: value };
       } else {
+        next.values = { ...next.values, inbound: String(value) };
         next.inbound = String(value);
       }
     }
@@ -49,13 +50,14 @@ function mergeAutoInboundDefaults(
     const item = { ...current, values: { ...(current.values || {}) } };
     const value = autoInbound[itemId];
 
-    if (value !== undefined) {
-      if (vendor === 'farmers' && itemId === 'f-broccoli') {
-        if (item.values.inboundKg === '' || item.values.inboundKg === undefined || item.values.inboundKg === null) {
-          item.values.inboundKg = value;
-          applied = true;
-        }
+      if (value !== undefined) {
+        if (vendor === 'farmers' && itemId === 'f-broccoli') {
+          if (item.values.inboundKg === '' || item.values.inboundKg === undefined || item.values.inboundKg === null) {
+            item.values.inboundKg = value;
+            applied = true;
+          }
       } else if (item.inbound === '' || item.inbound === undefined || item.inbound === null) {
+        item.values = { ...item.values, inbound: String(value) };
         item.inbound = String(value);
         applied = true;
       }

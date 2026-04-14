@@ -96,7 +96,7 @@ export function MarketbomForm({ data, onChange, settings, showInbound = true }: 
                           <MobileFieldInput
                             key={f.key}
                             field={f}
-                            value={f.key === 'inbound' ? (d.values[f.key] ?? '') : d.values[f.key]}
+                            value={f.key === 'inbound' ? (d.values[f.key] ?? d.inbound ?? '') : d.values[f.key]}
                             onChange={(val) => updateField(item.id, f.key, val)}
                           />
                         ))}
@@ -138,7 +138,7 @@ export function MarketbomForm({ data, onChange, settings, showInbound = true }: 
                               <FieldInput
                                 key={f.key}
                                 field={f}
-                                value={f.key === 'inbound' ? (d.values[f.key] ?? '') : d.values[f.key]}
+                                value={f.key === 'inbound' ? (d.values[f.key] ?? d.inbound ?? '') : d.values[f.key]}
                                 onChange={(val) => updateField(item.id, f.key, val)}
                                 unitDesc={item.unitDesc}
                               />
