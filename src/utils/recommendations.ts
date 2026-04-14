@@ -66,13 +66,17 @@ export function getRecommendations(
 export function computeRecommendedOrder(
   currentStock: number,
   defaultOrderCandidate: number,
-  minThresholdCandidate: number
+  minThresholdCandidate: number,
+  coverDaysAdjustment = 1
 ): number {
+  const safeAdjustment = Number.isFinite(coverDaysAdjustment) && coverDaysAdjustment > 0 ? coverDaysAdjustment : 1;
   if (defaultOrderCandidate <= 0) return 0;
-  if (currentStock <= minThresholdCandidate) return defaultOrderCandidate;
+  const adjustedDefault = defaultOrderCandidate * safeAdjustment;
+  const adjustedThreshold = minThresholdCandidate * safeAdjustment;
+  if (currentStock <= adjustedThreshold) return adjustedDefault;
   // Stock is above threshold - suggest reduced or zero
-  if (currentStock > minThresholdCandidate * 1.5) return 0;
-  return Math.max(0, Math.round(defaultOrderCandidate * 0.5));
+  if (currentStock > adjustedThreshold * 1.5) return 0;
+  return Math.max(0, Math.round(adjustedDefault * 0.5));
 }
 
 export function getStockStatus(

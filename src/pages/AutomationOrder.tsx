@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Vendor, RecorderType, AutomationItemData, AutomationRecord } from '@/types';
-import { getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
+import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { useRecords, useSettings } from '@/utils/storage';
 import { useAutomationRecords } from '@/utils/automationStorage';
-import { getRecommendations } from '@/utils/recommendations';
+import { computeRecommendedOrder, getRecommendations } from '@/utils/recommendations';
 import { addAutomationRecord, deleteAutomationDraft, getAutomationRecordsByDate, loadAutomationDraft, saveAutomationDraft } from '@/utils/automationStorage';
 import { getItemsByVendor } from '@/config/items';
 import { getAutoInboundFromPrevOrder, getAutoInboundSignature, shouldShowInbound } from '@/utils/inboundLogic';
@@ -12,10 +12,19 @@ import { AutoFarmersForm } from '@/components/AutoFarmersForm';
 import { AutoMarketbomForm } from '@/components/AutoMarketbomForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { normalizeOrderQuantity } from '@/utils/itemUnits';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const EXCEPTION_REASONS = ['업체 휴무', '공휴일', '배송 변경', '기타'];
+
+function countCoverDays(value: string): number {
+  return value
+    .split(',')
+    .map(day => day.trim())
+    .filter(Boolean)
+    .length;
+}
 
 function createBlankAutoItems(vendor: Vendor, autoInbound: Record<string, number>): Record<string, AutomationItemData> {
   const items = getItemsByVendor(vendor);
@@ -86,6 +95,15 @@ export function AutomationOrder() {
 
   const orderDays = getOrderDays(vendor);
   const isOrderDay = orderDays.includes(dayOfWeek);
+  const defaultCoverDays = getCoverDays(vendor, dayOfWeek);
+  const defaultCoverDaysCount = useMemo(() => countCoverDays(defaultCoverDays), [defaultCoverDays]);
+  const effectiveCoverDaysInput = coverDaysInput.trim() ? coverDaysInput : defaultCoverDays;
+  const coverDaysCount = useMemo(() => countCoverDays(effectiveCoverDaysInput), [effectiveCoverDaysInput]);
+  const coverDaysAdjustment = useMemo(() => {
+    if (defaultCoverDaysCount <= 0) return 1;
+    const ratio = coverDaysCount / defaultCoverDaysCount;
+    return Number.isFinite(ratio) && ratio > 0 ? Math.max(1, ratio) : 1;
+  }, [coverDaysCount, defaultCoverDaysCount]);
 
   // Inbound visibility
   const showInbound = shouldShowInbound(vendor, dayOfWeek, exceptionNoDelivery);
@@ -225,7 +243,18 @@ export function AutomationOrder() {
           memo: '',
         };
       }
-      return d;
+      return {
+        ...d,
+        recommendedOrder: normalizeOrderQuantity(
+          cfg.id,
+          computeRecommendedOrder(
+            d.currentStock,
+            d.defaultOrderCandidate,
+            d.minThresholdCandidate,
+            coverDaysAdjustment
+          )
+        ),
+      };
     });
 
     const coverDaysArr = coverDaysInput ? coverDaysInput.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -375,6 +404,7 @@ export function AutomationOrder() {
           recommendations={recommendations}
           settings={settings}
           showInbound={showInbound}
+          coverDaysAdjustment={coverDaysAdjustment}
         />
       ) : (
         <AutoMarketbomForm
@@ -383,6 +413,7 @@ export function AutomationOrder() {
           recommendations={recommendations}
           settings={settings}
           showInbound={showInbound}
+          coverDaysAdjustment={coverDaysAdjustment}
         />
       )}
 
