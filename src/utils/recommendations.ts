@@ -76,7 +76,8 @@ export function computeRecommendedOrder(
   if (currentStock <= adjustedThreshold) return adjustedDefault;
   // Stock is above threshold - suggest reduced or zero
   if (currentStock > adjustedThreshold * 1.5) return 0;
-  return Math.max(0, Math.round(adjustedDefault * 0.5));
+  // Keep the middle zone conservative so longer cover-days still increase the recommendation.
+  return Math.max(0, Math.ceil(adjustedDefault * 0.75));
 }
 
 export function getStockStatus(
