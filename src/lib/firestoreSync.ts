@@ -1,8 +1,8 @@
 import {
   collection,
   doc,
+  deleteDoc,
   getDoc,
-  getDocs,
   onSnapshot,
   setDoc,
   writeBatch,
@@ -133,18 +133,10 @@ async function mergeLocalAutomationRecords(records: AutomationRecord[]) {
 }
 
 async function replaceRemoteRecords(uid: string, records: DailyRecord[]) {
-  const snap = await getDocs(recordsRef(uid));
-  const nextIds = new Set(records.map((record) => record.id));
   const batch = writeBatch(db);
 
   for (const record of records.map(normalizeRecord)) {
     batch.set(recordDocRef(uid, record.id), record);
-  }
-
-  for (const existing of snap.docs) {
-    if (!nextIds.has(existing.id)) {
-      batch.delete(existing.ref);
-    }
   }
 
   await batch.commit();
@@ -155,18 +147,10 @@ async function replaceRemoteSettings(uid: string, settings: AppSettings) {
 }
 
 async function replaceRemoteAutomationRecords(uid: string, records: AutomationRecord[]) {
-  const snap = await getDocs(automationRef(uid));
-  const nextIds = new Set(records.map((record) => record.id));
   const batch = writeBatch(db);
 
   for (const record of records.map(normalizeAutomationRecord)) {
     batch.set(automationDocRef(uid, record.id), record);
-  }
-
-  for (const existing of snap.docs) {
-    if (!nextIds.has(existing.id)) {
-      batch.delete(existing.ref);
-    }
   }
 
   await batch.commit();
@@ -272,6 +256,16 @@ export async function replaceSettingsInFirestore(settings: AppSettings) {
 export async function replaceAutomationRecordsInFirestore(records: AutomationRecord[]) {
   if (!activeUid) return;
   await replaceRemoteAutomationRecords(activeUid, records);
+}
+
+export async function deleteRecordFromFirestore(id: string) {
+  if (!activeUid) return;
+  await deleteDoc(recordDocRef(activeUid, id));
+}
+
+export async function deleteAutomationRecordFromFirestore(id: string) {
+  if (!activeUid) return;
+  await deleteDoc(automationDocRef(activeUid, id));
 }
 
 export async function clearFirestoreSession() {

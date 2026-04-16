@@ -134,7 +134,7 @@ function loadAutomationDrafts(): Record<string, AutomationDraft> {
 }
 
 export function saveAutomationRecords(records: AutomationRecord[]) {
-  automationRecordsCache = normalizeAutomationRecordList(records);
+  automationRecordsCache = mergeAutomationRecords(automationRecordsCache, normalizeAutomationRecordList(records));
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(AUTO_RECORDS_KEY, JSON.stringify(automationRecordsCache));

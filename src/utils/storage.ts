@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 import type { AppSettings, DailyRecord, ItemData, RecorderType } from '@/types';
-import { replaceRecordsInFirestore, replaceSettingsInFirestore } from '@/lib/firestoreSync';
+import { deleteRecordFromFirestore, replaceRecordsInFirestore, replaceSettingsInFirestore } from '@/lib/firestoreSync';
 
 const RECORDS_KEY = 'inventory-records';
 const SETTINGS_KEY = 'inventory-settings';
@@ -134,7 +134,7 @@ export function useRecords(): DailyRecord[] {
 }
 
 export function saveRecords(records: DailyRecord[]) {
-  recordsCache = normalizeRecordList(records);
+  recordsCache = mergeRecords(recordsCache, normalizeRecordList(records));
   writeJson(RECORDS_KEY, recordsCache);
   emit(recordListeners);
   void replaceRecordsInFirestore(recordsCache);
@@ -148,7 +148,11 @@ export function addRecord(record: DailyRecord) {
 }
 
 export function deleteRecord(id: string) {
-  saveRecords(loadRecords().filter((record) => record.id !== id));
+  const next = loadRecords().filter((record) => record.id !== id);
+  recordsCache = normalizeRecordList(next);
+  writeJson(RECORDS_KEY, recordsCache);
+  emit(recordListeners);
+  void deleteRecordFromFirestore(id);
 }
 
 export function getRecordsByDate(date: string): DailyRecord[] {
