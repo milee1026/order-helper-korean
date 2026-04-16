@@ -155,6 +155,15 @@ export function convertOrderUnitsToStock(itemId: string, orderValue: number, set
   return orderValue * factor;
 }
 
+/** Format a quantity with its unit while preserving zero values. */
+export function formatQuantityWithUnit(val: number | undefined | null, unit: string): string {
+  if (val === undefined || val === null || !Number.isFinite(val)) return '-';
+  const rounded = Math.round(val * 100) / 100;
+  if (!unit) return `${rounded}`;
+  if (unit.includes('/')) return `${rounded}(${unit})`;
+  return `${rounded}${unit}`;
+}
+
 /** Format a value with its unit, returns '-' if value is falsy */
 export function fmtWithUnit(val: number | undefined, unit: string): string {
   if (val === undefined || val === null || !val) return '-';

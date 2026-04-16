@@ -63,6 +63,54 @@ export function getRecommendations(
   return result;
 }
 
+export interface CoverageRecommendationPlan {
+  dailyNeed: number;
+  leadNeed: number;
+  coverNeed: number;
+  remainingStockAfterLead: number;
+  recommendedRaw: number;
+}
+
+export function buildCoverageRecommendationPlan(
+  currentStock: number,
+  defaultOrderCandidate: number,
+  coverDaysCount = 0,
+  defaultCoverDaysCount = 0,
+  leadDaysCount = 0
+): CoverageRecommendationPlan {
+  const safeDefaultDays = Number.isFinite(defaultCoverDaysCount) && defaultCoverDaysCount > 0 ? defaultCoverDaysCount : 1;
+  const safeCoverDays = Number.isFinite(coverDaysCount) && coverDaysCount > 0 ? coverDaysCount : safeDefaultDays;
+  const safeLeadDays = Number.isFinite(leadDaysCount) && leadDaysCount > 0 ? leadDaysCount : 0;
+
+  if (defaultOrderCandidate <= 0) {
+    return {
+      dailyNeed: 0,
+      leadNeed: 0,
+      coverNeed: 0,
+      remainingStockAfterLead: Math.max(0, currentStock),
+      recommendedRaw: 0,
+    };
+  }
+
+  // Historical average order translated into one day of demand.
+  const dailyNeed = defaultOrderCandidate / safeDefaultDays;
+
+  // Stock that will be used up before the next inbound can be consumed.
+  const leadNeed = dailyNeed * safeLeadDays;
+  const remainingStockAfterLead = Math.max(0, currentStock - leadNeed);
+
+  // Future order window that the next delivery must cover.
+  const coverNeed = dailyNeed * safeCoverDays;
+
+  return {
+    dailyNeed,
+    leadNeed,
+    coverNeed,
+    remainingStockAfterLead,
+    recommendedRaw: Math.max(0, coverNeed - remainingStockAfterLead),
+  };
+}
+
 export function computeRecommendedOrder(
   currentStock: number,
   defaultOrderCandidate: number,
@@ -71,16 +119,14 @@ export function computeRecommendedOrder(
   defaultCoverDaysCount = 0,
   leadDaysCount = 0
 ): number {
-  const safeDefaultDays = Number.isFinite(defaultCoverDaysCount) && defaultCoverDaysCount > 0 ? defaultCoverDaysCount : 1;
-  const safeCoverDays = Number.isFinite(coverDaysCount) && coverDaysCount > 0 ? coverDaysCount : safeDefaultDays;
-  const safeLeadDays = Number.isFinite(leadDaysCount) && leadDaysCount > 0 ? leadDaysCount : 0;
-  if (defaultOrderCandidate <= 0) return 0;
-
-  const dailyNeed = defaultOrderCandidate / safeDefaultDays;
-  const totalNeed = dailyNeed * (safeLeadDays + safeCoverDays);
-  const safetyFloor = minThresholdCandidate > 0 ? minThresholdCandidate : 0;
-  const requiredTotal = Math.max(totalNeed, safetyFloor);
-  return Math.max(0, requiredTotal - currentStock);
+  void minThresholdCandidate;
+  return buildCoverageRecommendationPlan(
+    currentStock,
+    defaultOrderCandidate,
+    coverDaysCount,
+    defaultCoverDaysCount,
+    leadDaysCount
+  ).recommendedRaw;
 }
 
 export function getStockStatus(
