@@ -68,20 +68,19 @@ export function computeRecommendedOrder(
   defaultOrderCandidate: number,
   minThresholdCandidate: number,
   coverDaysCount = 0,
-  defaultCoverDaysCount = 0
+  defaultCoverDaysCount = 0,
+  leadDaysCount = 0
 ): number {
   const safeDefaultDays = Number.isFinite(defaultCoverDaysCount) && defaultCoverDaysCount > 0 ? defaultCoverDaysCount : 1;
   const safeCoverDays = Number.isFinite(coverDaysCount) && coverDaysCount > 0 ? coverDaysCount : safeDefaultDays;
+  const safeLeadDays = Number.isFinite(leadDaysCount) && leadDaysCount > 0 ? leadDaysCount : 0;
   if (defaultOrderCandidate <= 0) return 0;
-  const orderPerDay = Math.max(1, Math.ceil(defaultOrderCandidate / safeDefaultDays));
-  const stockPerDay = Math.max(1, Math.ceil(minThresholdCandidate / safeDefaultDays));
-  const dayDelta = safeCoverDays - safeDefaultDays;
-  const adjustedDefault = Math.max(0, defaultOrderCandidate + (dayDelta * orderPerDay));
-  const adjustedThreshold = Math.max(0, minThresholdCandidate + (dayDelta * stockPerDay));
-  if (currentStock <= adjustedThreshold) return adjustedDefault;
-  // Stock is above threshold - suggest reduced or zero
-  if (currentStock > adjustedThreshold * 1.5) return 0;
-  return Math.max(0, Math.ceil(adjustedDefault * 0.75));
+
+  const dailyNeed = defaultOrderCandidate / safeDefaultDays;
+  const totalNeed = dailyNeed * (safeLeadDays + safeCoverDays);
+  const safetyFloor = minThresholdCandidate > 0 ? minThresholdCandidate : 0;
+  const requiredTotal = Math.max(totalNeed, safetyFloor);
+  return Math.max(0, requiredTotal - currentStock);
 }
 
 export function getStockStatus(

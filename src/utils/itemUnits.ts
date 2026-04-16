@@ -2,6 +2,8 @@
 // orderUnit = unit used for ordering (평균발주량, 추천발주량, 최종발주)
 // stockUnit = unit used for stock measurement (최소재고량, 현재재고)
 
+import type { AppSettings } from '@/types';
+
 interface ItemUnits {
   orderUnit: string;
   stockUnit: string;
@@ -110,6 +112,47 @@ export function getOrderUnit(itemId: string): string {
 
 export function getStockUnit(itemId: string): string {
   return ITEM_UNITS[itemId]?.stockUnit || '';
+}
+
+export function getStockUnitsPerOrderUnit(itemId: string, settings?: AppSettings): number {
+  switch (itemId) {
+    case 'f-salad':
+      return 0.5;
+    case 'f-broccoli':
+      return 1;
+    case 'f-paprika':
+      return 0.6;
+    case 'f-chive':
+      return 2;
+    case 'm-beef':
+    case 'm-pork':
+    case 'm-chicken':
+      return settings?.meatPacksPerTray?.[itemId] || 10;
+    case 'ms-salpa':
+    case 'ms-rose':
+    case 'ms-curry':
+      return 10;
+    case 'mr-yogurt':
+      return 2;
+    case 'mo-pasta':
+      return 20;
+    case 'mo-agave':
+      return 2;
+    default:
+      return 1;
+  }
+}
+
+export function convertStockToOrderUnits(itemId: string, stockValue: number, settings?: AppSettings): number {
+  const factor = getStockUnitsPerOrderUnit(itemId, settings);
+  if (!Number.isFinite(stockValue) || factor <= 0) return 0;
+  return stockValue / factor;
+}
+
+export function convertOrderUnitsToStock(itemId: string, orderValue: number, settings?: AppSettings): number {
+  const factor = getStockUnitsPerOrderUnit(itemId, settings);
+  if (!Number.isFinite(orderValue) || factor <= 0) return 0;
+  return orderValue * factor;
 }
 
 /** Format a value with its unit, returns '-' if value is falsy */

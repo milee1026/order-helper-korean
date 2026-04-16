@@ -29,6 +29,10 @@ export function getOrderDays(vendor: 'farmers' | 'marketbom'): number[] {
   return vendor === 'farmers' ? FARMERS_ALL_ORDER_DAYS : MARKETBOM_ORDER_DAYS;
 }
 
+export function getLeadDays(vendor: 'farmers' | 'marketbom'): number {
+  return vendor === 'farmers' ? 1 : 2;
+}
+
 export function getDayOfWeek(dateStr: string): number {
   return new Date(dateStr + 'T00:00:00').getDay();
 }

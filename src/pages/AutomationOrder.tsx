@@ -12,7 +12,8 @@ import { AutoFarmersForm } from '@/components/AutoFarmersForm';
 import { AutoMarketbomForm } from '@/components/AutoMarketbomForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { normalizeOrderQuantity } from '@/utils/itemUnits';
+import { convertStockToOrderUnits, normalizeOrderQuantity } from '@/utils/itemUnits';
+import { getLeadDays } from '@/config/ordering';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -99,6 +100,7 @@ export function AutomationOrder() {
   const defaultCoverDaysCount = useMemo(() => countCoverDays(defaultCoverDays), [defaultCoverDays]);
   const effectiveCoverDaysInput = coverDaysInput.trim() ? coverDaysInput : defaultCoverDays;
   const coverDaysCount = useMemo(() => countCoverDays(effectiveCoverDaysInput), [effectiveCoverDaysInput]);
+  const leadDaysCount = getLeadDays(vendor);
 
   // Inbound visibility
   const showInbound = shouldShowInbound(vendor, dayOfWeek, exceptionNoDelivery);
@@ -243,11 +245,12 @@ export function AutomationOrder() {
         recommendedOrder: normalizeOrderQuantity(
           cfg.id,
           computeRecommendedOrder(
-            d.currentStock,
+            convertStockToOrderUnits(cfg.id, d.currentStock, settings),
             d.defaultOrderCandidate,
-            d.minThresholdCandidate,
+            convertStockToOrderUnits(cfg.id, d.minThresholdCandidate, settings),
             coverDaysCount,
-            defaultCoverDaysCount
+            defaultCoverDaysCount,
+            leadDaysCount
           )
         ),
       };
@@ -402,6 +405,7 @@ export function AutomationOrder() {
           showInbound={showInbound}
           coverDaysCount={coverDaysCount}
           defaultCoverDaysCount={defaultCoverDaysCount}
+          leadDaysCount={leadDaysCount}
         />
       ) : (
         <AutoMarketbomForm
@@ -412,6 +416,7 @@ export function AutomationOrder() {
           showInbound={showInbound}
           coverDaysCount={coverDaysCount}
           defaultCoverDaysCount={defaultCoverDaysCount}
+          leadDaysCount={leadDaysCount}
         />
       )}
 
