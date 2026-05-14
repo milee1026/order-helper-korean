@@ -33,26 +33,6 @@ function emitAutomationListeners() {
   automationListeners.forEach((listener) => listener());
 }
 
-function isLegacyAutoFillArtifact(item: AutomationItemData): boolean {
-  const keys = Object.keys(item.currentStockValues || {});
-  return item.itemId === 'ms-med-teri'
-    && keys.length === 1
-    && keys[0] === 'usedRatio'
-    && Number(item.currentStockValues.usedRatio) === 0.2;
-}
-
-function normalizeAutomationItem(item: AutomationItemData): AutomationItemData {
-  if (!isLegacyAutoFillArtifact(item)) return item;
-  return {
-    ...item,
-    currentStockValues: {},
-    currentStock: 0,
-    defaultOrderCandidate: 0,
-    minThresholdCandidate: 0,
-    recommendedOrder: 0,
-  };
-}
-
 function normalizeAutomationRecord(record: Partial<AutomationRecord>): AutomationRecord {
   return {
     id: typeof record.id === 'string' ? record.id : crypto.randomUUID(),
@@ -64,7 +44,7 @@ function normalizeAutomationRecord(record: Partial<AutomationRecord>): Automatio
     items: Array.isArray(record.items)
       ? record.items
           .filter((item): item is AutomationItemData => typeof item === 'object' && item !== null)
-          .map(normalizeAutomationItem)
+          .map((item) => ({ ...item }))
       : [],
     createdAt: typeof record.createdAt === 'string' ? record.createdAt : new Date().toISOString(),
     updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : typeof record.createdAt === 'string' ? record.createdAt : new Date().toISOString(),
@@ -76,7 +56,7 @@ function normalizeAutomationDraft(draft: AutomationDraft): AutomationDraft {
   return {
     ...draft,
     autoItems: Object.fromEntries(
-      Object.entries(draft.autoItems).map(([itemId, item]) => [itemId, normalizeAutomationItem(item)])
+      Object.entries(draft.autoItems).map(([itemId, item]) => [itemId, { ...item }])
     ),
   };
 }
@@ -87,6 +67,11 @@ function normalizeAutomationRecordList(records: Partial<AutomationRecord>[]): Au
 
 function recordTimestamp(record: Pick<AutomationRecord, 'createdAt' | 'updatedAt'>) {
   return Date.parse(record.updatedAt || record.createdAt || '') || 0;
+}
+
+function withPreservedCreatedAt(record: AutomationRecord, existing?: AutomationRecord): AutomationRecord {
+  if (record.createdAt || !existing?.createdAt) return record;
+  return { ...record, createdAt: existing.createdAt };
 }
 
 function mergeAutomationRecords(current: AutomationRecord[], incoming: AutomationRecord[]): AutomationRecord[] {
@@ -103,7 +88,7 @@ function mergeAutomationRecords(current: AutomationRecord[], incoming: Automatio
 
     const existing = next[index];
     if (recordTimestamp(record) >= recordTimestamp(existing)) {
-      next[index] = record;
+      next[index] = withPreservedCreatedAt(record, existing);
     }
   }
 
@@ -173,7 +158,7 @@ export function mergeAutomationRecordsFromRemote(records: AutomationRecord[]) {
 export function addAutomationRecord(record: AutomationRecord) {
   const records = loadAutomationRecords();
   const idx = records.findIndex((r) => r.id === record.id);
-  if (idx >= 0) records[idx] = record;
+  if (idx >= 0) records[idx] = withPreservedCreatedAt(record, records[idx]);
   else records.push(record);
   saveAutomationRecords(records);
 }

@@ -188,6 +188,9 @@ export function TodayRecord() {
 
   const handleSave = () => {
     const items = getItemsByVendor(vendor);
+    const existingRecord = editingId
+      ? getRecordsByDate(date).find(record => record.id === editingId)
+      : undefined;
     const recordItems: ItemData[] = items.map(cfg => {
       const d = itemData[cfg.id];
       if (!d) return { itemId: cfg.id, values: {}, inbound: '', order: '', memo: '' };
@@ -200,7 +203,7 @@ export function TodayRecord() {
       date, vendor, recorderType: recorder, orderDay: dayOfWeek,
       coverDays: coverDaysInput ? coverDaysInput.split(',').map(s => s.trim()).filter(Boolean) : [],
       items: recordItems,
-      createdAt: editingId ? '' : new Date().toISOString(),
+      createdAt: existingRecord?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     addRecord(record);

@@ -2,6 +2,7 @@ import { DailyRecord, CsvRow } from '@/types';
 import { getItemById, ALL_ITEMS } from '@/config/items';
 import { DAY_NAMES_KR } from '@/config/ordering';
 import { loadSettings } from './storage';
+import { readCompatibleInbound, readCompatibleTotalStock } from '@/utils/recordCompatibility';
 
 export function recordsToCsvRows(records: DailyRecord[]): CsvRow[] {
   const settings = loadSettings();
@@ -10,9 +11,7 @@ export function recordsToCsvRows(records: DailyRecord[]): CsvRow[] {
     for (const item of rec.items) {
       const cfg = getItemById(item.itemId);
       if (!cfg) continue;
-      const total = cfg.computeTotal
-        ? cfg.computeTotal(item.values as Record<string, number>, settings)
-        : item.totalStock;
+      const total = readCompatibleTotalStock(item, cfg, settings);
       rows.push({
         date: rec.date,
         vendor: rec.vendor,
@@ -26,7 +25,7 @@ export function recordsToCsvRows(records: DailyRecord[]): CsvRow[] {
         unused_amount: cfg.id === 'f-salad'
           ? String(getSaladUnusedAmount(item.values))
           : String(item.values.unused ?? item.values.unusedTrays ?? item.values.morningStock ?? ''),
-        inbound_amount: String(item.inbound ?? ''),
+        inbound_amount: String(readCompatibleInbound(item)),
         order_amount: String(item.order ?? ''),
         total_stock_converted: total != null ? String(Math.round(total * 100) / 100) : '',
         memo: item.memo || '',

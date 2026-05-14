@@ -1,6 +1,7 @@
 import { DailyRecord, AppSettings } from '@/types';
 import { getItemById, ALL_ITEMS } from '@/config/items';
 import { getKstDateString, shiftKstDateString } from '@/utils/date';
+import { readCompatibleInbound, readCompatibleTotalStock } from '@/utils/recordCompatibility';
 
 interface ItemStats {
   itemId: string;
@@ -29,8 +30,8 @@ export function computeAnalysis(records: DailyRecord[], settings: AppSettings) {
       }
       const st = statsMap.get(item.itemId)!;
       const orderAmt = Number(item.order) || 0;
-      const inboundAmt = Number(item.inbound) || 0;
-      const total = cfg.computeTotal ? cfg.computeTotal(item.values as Record<string, number>, settings) : (item.totalStock ?? 0);
+      const inboundAmt = Number(readCompatibleInbound(item)) || 0;
+      const total = readCompatibleTotalStock(item, cfg, settings);
 
       if (orderAmt > 0) {
         st.orderCount++;

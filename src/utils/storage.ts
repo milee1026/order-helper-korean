@@ -93,6 +93,11 @@ function recordTimestamp(record: Pick<DailyRecord, 'createdAt' | 'updatedAt'>) {
   return Date.parse(record.updatedAt || record.createdAt || '') || 0;
 }
 
+function withPreservedCreatedAt(record: DailyRecord, existing?: DailyRecord): DailyRecord {
+  if (record.createdAt || !existing?.createdAt) return record;
+  return { ...record, createdAt: existing.createdAt };
+}
+
 function mergeRecords(current: DailyRecord[], incoming: DailyRecord[]): DailyRecord[] {
   const next = current.map(normalizeRecord);
   const indexById = new Map(next.map((record, index) => [record.id, index]));
@@ -107,7 +112,7 @@ function mergeRecords(current: DailyRecord[], incoming: DailyRecord[]): DailyRec
 
     const existing = next[index];
     if (recordTimestamp(record) >= recordTimestamp(existing)) {
-      next[index] = record;
+      next[index] = withPreservedCreatedAt(record, existing);
     }
   }
 
@@ -143,7 +148,8 @@ export function saveRecords(records: DailyRecord[]) {
 export function addRecord(record: DailyRecord) {
   const records = loadRecords();
   const idx = records.findIndex((entry) => entry.id === record.id);
-  const next = idx >= 0 ? records.map((entry, i) => (i === idx ? record : entry)) : [...records, record];
+  const safeRecord = idx >= 0 ? withPreservedCreatedAt(record, records[idx]) : record;
+  const next = idx >= 0 ? records.map((entry, i) => (i === idx ? safeRecord : entry)) : [...records, safeRecord];
   saveRecords(next);
 }
 

@@ -225,6 +225,9 @@ export function AutomationOrder() {
 
   const handleSave = () => {
     const items = getItemsByVendor(vendor);
+    const existingRecord = editingId
+      ? getAutomationRecordsByDate(date, vendor).find(record => record.id === editingId)
+      : undefined;
     const recordItems: AutomationItemData[] = items.map(cfg => {
       const d = autoItems[cfg.id];
       if (!d) {
@@ -263,7 +266,7 @@ export function AutomationOrder() {
       date, vendor, recorderType: recorder, orderDay: dayOfWeek,
       coverDays: coverDaysArr,
       items: recordItems,
-      createdAt: editingId ? '' : new Date().toISOString(),
+      createdAt: existingRecord?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       type: 'automation',
     };

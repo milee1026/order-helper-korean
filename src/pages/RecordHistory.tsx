@@ -5,6 +5,7 @@ import { DAY_NAMES_KR } from '@/config/ordering';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
+import { readCompatibleInbound } from '@/utils/recordCompatibility';
 
 export function RecordHistory() {
   const { toast } = useToast();
@@ -62,7 +63,7 @@ export function RecordHistory() {
                     <tr key={idx}>
                       <td className="border px-1 py-0.5">{cfg?.name || item.itemId}</td>
                       <td className="border px-1 py-0.5">{cfg?.category || ''}</td>
-                      <td className="border px-1 py-0.5 text-center">{item.inbound || '-'}</td>
+                      <td className="border px-1 py-0.5 text-center">{readCompatibleInbound(item) || '-'}</td>
                       <td className="border px-1 py-0.5 text-center">{item.order || '-'}</td>
                       <td className="border px-1 py-0.5 text-center font-mono">
                         {item.totalStock != null ? Math.round(item.totalStock * 100) / 100 : '-'}

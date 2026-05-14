@@ -142,7 +142,7 @@ async function replaceRemoteRecords(uid: string, records: DailyRecord[]) {
     const chunk = normalized.slice(start, start + FIRESTORE_BATCH_LIMIT);
 
     for (const record of chunk) {
-      batch.set(recordDocRef(uid, record.id), record);
+      batch.set(recordDocRef(uid, record.id), record, { merge: true });
     }
 
     await batch.commit();
@@ -161,7 +161,7 @@ async function replaceRemoteAutomationRecords(uid: string, records: AutomationRe
     const chunk = normalized.slice(start, start + FIRESTORE_BATCH_LIMIT);
 
     for (const record of chunk) {
-      batch.set(automationDocRef(uid, record.id), record);
+      batch.set(automationDocRef(uid, record.id), record, { merge: true });
     }
 
     await batch.commit();
