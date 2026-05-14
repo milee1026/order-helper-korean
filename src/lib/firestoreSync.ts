@@ -3,6 +3,7 @@ import {
   doc,
   deleteDoc,
   getDoc,
+  getDocs,
   onSnapshot,
   setDoc,
   writeBatch,
@@ -16,6 +17,7 @@ const RECORDS_COLLECTION = 'records';
 const SETTINGS_COLLECTION = 'settings';
 const SETTINGS_DOC_ID = 'current';
 const AUTOMATION_COLLECTION = 'automationRecords';
+const FIRESTORE_BATCH_LIMIT = 450;
 
 let activeUid: string | null = null;
 let unsubscribeSession: (() => void) | null = null;
@@ -133,13 +135,18 @@ async function mergeLocalAutomationRecords(records: AutomationRecord[]) {
 }
 
 async function replaceRemoteRecords(uid: string, records: DailyRecord[]) {
-  const batch = writeBatch(db);
+  const normalized = records.map(normalizeRecord);
 
-  for (const record of records.map(normalizeRecord)) {
-    batch.set(recordDocRef(uid, record.id), record);
+  for (let start = 0; start < normalized.length; start += FIRESTORE_BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    const chunk = normalized.slice(start, start + FIRESTORE_BATCH_LIMIT);
+
+    for (const record of chunk) {
+      batch.set(recordDocRef(uid, record.id), record);
+    }
+
+    await batch.commit();
   }
-
-  await batch.commit();
 }
 
 async function replaceRemoteSettings(uid: string, settings: AppSettings) {
@@ -147,13 +154,18 @@ async function replaceRemoteSettings(uid: string, settings: AppSettings) {
 }
 
 async function replaceRemoteAutomationRecords(uid: string, records: AutomationRecord[]) {
-  const batch = writeBatch(db);
+  const normalized = records.map(normalizeAutomationRecord);
 
-  for (const record of records.map(normalizeAutomationRecord)) {
-    batch.set(automationDocRef(uid, record.id), record);
+  for (let start = 0; start < normalized.length; start += FIRESTORE_BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    const chunk = normalized.slice(start, start + FIRESTORE_BATCH_LIMIT);
+
+    for (const record of chunk) {
+      batch.set(automationDocRef(uid, record.id), record);
+    }
+
+    await batch.commit();
   }
-
-  await batch.commit();
 }
 
 async function loadRemoteRecords(uid: string): Promise<DailyRecord[]> {
@@ -275,3 +287,4 @@ export async function clearFirestoreSession() {
   }
   activeUid = null;
 }
+
