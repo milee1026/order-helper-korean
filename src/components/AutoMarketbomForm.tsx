@@ -4,7 +4,8 @@ import { MARKETBOM_CATEGORIES, getItemsByCategory } from '@/config/items';
 import { Input } from '@/components/ui/input';
 import { RatioSelector } from '@/components/RatioSelector';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
-import { buildCoverageRecommendationPlan, getStockStatus } from '@/utils/recommendations';
+import { RecommendationAuditDetails } from '@/components/RecommendationAuditDetails';
+import { buildCoverageRecommendationPlan, getStockStatus, type RecommendationAudit } from '@/utils/recommendations';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   convertStockToOrderUnits,
@@ -23,6 +24,7 @@ interface Props {
   coverDaysCount?: number;
   defaultCoverDaysCount?: number;
   leadDaysCount?: number;
+  recommendationAudits?: Record<string, RecommendationAudit>;
 }
 
 function toRatioValue(value: string | number | undefined | null): number | null {
@@ -118,6 +120,7 @@ export function AutoMarketbomForm({
   coverDaysCount = 0,
   defaultCoverDaysCount = 0,
   leadDaysCount = 0,
+  recommendationAudits = {},
 }: Props) {
   const isMobile = useIsMobile();
 
@@ -185,6 +188,8 @@ export function AutoMarketbomForm({
                   const minThresholdOrderUnits = convertStockToOrderUnits(item.id, d.minThresholdCandidate, settings);
                   const plan = buildCoverageRecommendationPlan(currentStockOrderUnits, d.defaultOrderCandidate, safeCoverDays, safeDefaultDays, safeLeadDays);
                   const status = hasItemInput(d) ? getStockStatus(currentStockOrderUnits, minThresholdOrderUnits) : '-';
+                  const hasInput = hasItemInput(d);
+                  const roundedRecommendation = normalizeOrderQuantity(item.id, plan.recommendedRaw);
 
                   return (
                     <div key={item.id} className="border rounded bg-background">
@@ -238,12 +243,23 @@ export function AutoMarketbomForm({
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">추천 발주량</span>
                             <b className="text-primary">
-                              {hasItemInput(d)
-                                ? formatQuantityWithUnit(normalizeOrderQuantity(item.id, plan.recommendedRaw), getOrderUnit(item.id))
+                              {hasInput
+                                ? formatQuantityWithUnit(roundedRecommendation, getOrderUnit(item.id))
                                 : '-'}
                             </b>
                           </div>
                         </div>
+
+                        <RecommendationAuditDetails
+                          audit={recommendationAudits[item.id]}
+                          currentStockConverted={currentStockOrderUnits}
+                          leadDays={safeLeadDays}
+                          plan={plan}
+                          roundedRecommendation={roundedRecommendation}
+                          orderUnit={getOrderUnit(item.id)}
+                          stockUnit={getStockUnit(item.id)}
+                          hasInput={hasInput}
+                        />
 
                         <label className="flex items-center justify-between gap-2 text-xs">
                           <span className="text-muted-foreground">메모</span>
@@ -278,73 +294,91 @@ export function AutoMarketbomForm({
                     const minThresholdOrderUnits = convertStockToOrderUnits(item.id, d.minThresholdCandidate, settings);
                     const plan = buildCoverageRecommendationPlan(currentStockOrderUnits, d.defaultOrderCandidate, safeCoverDays, safeDefaultDays, safeLeadDays);
                     const status = hasItemInput(d) ? getStockStatus(currentStockOrderUnits, minThresholdOrderUnits) : '-';
+                    const hasInput = hasItemInput(d);
+                    const roundedRecommendation = normalizeOrderQuantity(item.id, plan.recommendedRaw);
 
                     return (
-                      <tr key={item.id} className="hover:bg-accent/30">
-                        <td className="border px-1 py-1">
-                          <div className="font-medium">{item.name}</div>
-                          <div className="text-muted-foreground" style={{ fontSize: '9px' }}>{item.unitDesc}</div>
-                        </td>
-                        <td className="border px-1 py-1">
-                          <div className="flex flex-wrap gap-x-2 gap-y-1 items-center">
-                            {item.fields
-                              .filter(f => f.key !== 'inbound' && f.key !== 'order')
-                              .map(f => renderStockInput(
-                                item.id,
-                                f,
-                                d.currentStockValues[f.key],
-                                val => updateVal(item.id, f.key, val)
-                              ))}
-                          </div>
-                        </td>
-                        <td className="border px-1 py-1 text-center">
-                          {showInbound ? (
+                      <React.Fragment key={item.id}>
+                        <tr className="hover:bg-accent/30">
+                          <td className="border px-1 py-1">
+                            <div className="font-medium">{item.name}</div>
+                            <div className="text-muted-foreground" style={{ fontSize: '9px' }}>{item.unitDesc}</div>
+                          </td>
+                          <td className="border px-1 py-1">
+                            <div className="flex flex-wrap gap-x-2 gap-y-1 items-center">
+                              {item.fields
+                                .filter(f => f.key !== 'inbound' && f.key !== 'order')
+                                .map(f => renderStockInput(
+                                  item.id,
+                                  f,
+                                  d.currentStockValues[f.key],
+                                  val => updateVal(item.id, f.key, val)
+                                ))}
+                            </div>
+                          </td>
+                          <td className="border px-1 py-1 text-center">
+                            {showInbound ? (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  className="w-12 h-6 text-xs px-1 mx-auto"
+                                  value={d.inboundRef ?? ''}
+                                  onChange={e => updateInbound(item.id, e.target.value)}
+                                />
+                                <span className="text-muted-foreground" style={{ fontSize: '9px' }}>{getStockUnit(item.id)}</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
+                          </td>
+                          <td className="border px-1 py-1 text-center font-mono">
+                            <div className="text-muted-foreground" style={{ fontSize: '9px' }}>{item.totalLabel || '현재재고'}</div>
+                            <b>{hasInput ? formatQuantityWithUnit(d.currentStock, getStockUnit(item.id)) : '-'}</b>
+                          </td>
+                          <td className="border px-1 py-1 text-center"><StatusBadge status={status} /></td>
+                          <td className="border px-1 py-1 text-center font-mono">
+                            {hasInput ? formatQuantityWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id)) : '-'}
+                          </td>
+                          <td className="border px-1 py-1 text-center font-mono">
+                            {hasInput ? formatQuantityWithUnit(d.minThresholdCandidate, getStockUnit(item.id)) : '-'}
+                          </td>
+                          <td className="border px-1 py-1 text-center font-mono font-medium text-primary">
+                            {hasInput
+                              ? formatQuantityWithUnit(roundedRecommendation, getOrderUnit(item.id))
+                              : '-'}
+                          </td>
+                          <td className="border px-1 py-1 text-center">
                             <div className="flex flex-col items-center gap-0.5">
                               <Input
                                 type="number"
                                 min="0"
-                                className="w-12 h-6 text-xs px-1 mx-auto"
-                                value={d.inboundRef ?? ''}
-                                onChange={e => updateInbound(item.id, e.target.value)}
+                                className="w-14 h-6 text-xs px-1 border-primary mx-auto"
+                                value={d.finalOrder || ''}
+                                onChange={e => updateFinal(item.id, Number(e.target.value.replace(/-/g, '')) || 0)}
                               />
-                              <span className="text-muted-foreground" style={{ fontSize: '9px' }}>{getStockUnit(item.id)}</span>
+                              <span className="text-muted-foreground" style={{ fontSize: '9px' }}>{getOrderUnit(item.id)}</span>
                             </div>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </td>
-                        <td className="border px-1 py-1 text-center font-mono">
-                          <div className="text-muted-foreground" style={{ fontSize: '9px' }}>{item.totalLabel || '현재재고'}</div>
-                          <b>{hasItemInput(d) ? formatQuantityWithUnit(d.currentStock, getStockUnit(item.id)) : '-'}</b>
-                        </td>
-                        <td className="border px-1 py-1 text-center"><StatusBadge status={status} /></td>
-                        <td className="border px-1 py-1 text-center font-mono">
-                          {hasItemInput(d) ? formatQuantityWithUnit(d.defaultOrderCandidate, getOrderUnit(item.id)) : '-'}
-                        </td>
-                        <td className="border px-1 py-1 text-center font-mono">
-                          {hasItemInput(d) ? formatQuantityWithUnit(d.minThresholdCandidate, getStockUnit(item.id)) : '-'}
-                        </td>
-                        <td className="border px-1 py-1 text-center font-mono font-medium text-primary">
-                          {hasItemInput(d)
-                            ? formatQuantityWithUnit(normalizeOrderQuantity(item.id, plan.recommendedRaw), getOrderUnit(item.id))
-                            : '-'}
-                        </td>
-                        <td className="border px-1 py-1 text-center">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <Input
-                              type="number"
-                              min="0"
-                              className="w-14 h-6 text-xs px-1 border-primary mx-auto"
-                              value={d.finalOrder || ''}
-                              onChange={e => updateFinal(item.id, Number(e.target.value.replace(/-/g, '')) || 0)}
+                          </td>
+                          <td className="border px-1 py-1">
+                            <Input className="h-6 text-xs px-1" value={d.memo} onChange={e => updateMemo(item.id, e.target.value)} />
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border px-1 py-1" colSpan={10}>
+                            <RecommendationAuditDetails
+                              audit={recommendationAudits[item.id]}
+                              currentStockConverted={currentStockOrderUnits}
+                              leadDays={safeLeadDays}
+                              plan={plan}
+                              roundedRecommendation={roundedRecommendation}
+                              orderUnit={getOrderUnit(item.id)}
+                              stockUnit={getStockUnit(item.id)}
+                              hasInput={hasInput}
                             />
-                            <span className="text-muted-foreground" style={{ fontSize: '9px' }}>{getOrderUnit(item.id)}</span>
-                          </div>
-                        </td>
-                        <td className="border px-1 py-1">
-                          <Input className="h-6 text-xs px-1" value={d.memo} onChange={e => updateMemo(item.id, e.target.value)} />
-                        </td>
-                      </tr>
+                          </td>
+                        </tr>
+                      </React.Fragment>
                     );
                   })}
                 </tbody>

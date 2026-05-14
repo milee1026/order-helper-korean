@@ -9,6 +9,42 @@ interface ItemRecommendation {
   modeOrderByDay: Record<number, number>;
 }
 
+export interface RecommendationTrainingEntry {
+  source: 'automation' | 'today';
+  date: string;
+  vendor: 'farmers' | 'marketbom';
+  orderDay: number;
+  coverDays: string[];
+  coverDaysCount: number;
+  valueType: 'finalOrder' | 'order';
+  value: number;
+  estimatedDailyUsage: number;
+}
+
+export interface RecommendationTrainingExclusion {
+  source: 'automation' | 'today';
+  date: string;
+  vendor: 'farmers' | 'marketbom';
+  orderDay: number;
+  coverDays: string[];
+  coverDaysCount: number;
+  reason: string;
+  valueType?: 'finalOrder' | 'order';
+  value?: number;
+}
+
+export interface RecommendationAudit {
+  itemId: string;
+  cutoffDate: string;
+  defaultCoverDaysCount: number;
+  usedRecords: RecommendationTrainingEntry[];
+  excludedRecords: RecommendationTrainingExclusion[];
+  estimatedDailyUsage: number;
+  averageOrderCandidate: number;
+  minThresholdCandidate: number;
+  totalStockSampleCount: number;
+}
+
 export function getRecommendations(
   records: DailyRecord[],
   vendor: 'farmers' | 'marketbom',
@@ -94,6 +130,195 @@ export function getRecommendations(
         Object.entries(st.orderByDay).map(([d, vals]) => [d, mode(vals)])
       ),
     };
+  }
+
+  return result;
+}
+
+export function getRecommendationAudits(
+  records: DailyRecord[],
+  vendor: 'farmers' | 'marketbom',
+  orderDay: number,
+  automationRecords: AutomationRecord[] = []
+): Record<string, RecommendationAudit> {
+  const result: Record<string, RecommendationAudit> = {};
+  const cutoffDate = shiftKstDateString(getKstDateString(), -28);
+  const currentDefaultCoverDays = countCoverDays(getCoverDays(vendor, orderDay)) || 1;
+
+  const statsMap = new Map<string, {
+    orderQuantities: number[];
+    orderByDay: Record<number, number[]>;
+    totalStocks: number[];
+    estimatedDailyUsages: number[];
+  }>();
+
+  const ensureStats = (itemId: string) => {
+    if (!statsMap.has(itemId)) {
+      statsMap.set(itemId, { orderQuantities: [], orderByDay: {}, totalStocks: [], estimatedDailyUsages: [] });
+    }
+    return statsMap.get(itemId)!;
+  };
+
+  const ensureAudit = (itemId: string) => {
+    if (!result[itemId]) {
+      result[itemId] = {
+        itemId,
+        cutoffDate,
+        defaultCoverDaysCount: currentDefaultCoverDays,
+        usedRecords: [],
+        excludedRecords: [],
+        estimatedDailyUsage: 0,
+        averageOrderCandidate: 0,
+        minThresholdCandidate: 0,
+        totalStockSampleCount: 0,
+      };
+    }
+    return result[itemId];
+  };
+
+  const automationFinalOrderKeys = new Set<string>();
+
+  for (const rec of automationRecords) {
+    if (rec.vendor !== vendor || rec.date < cutoffDate) {
+      continue;
+    }
+
+    const recordReason = getTrainingRecordExclusionReason(rec.vendor, rec.orderDay, rec.coverDays);
+    if (recordReason) {
+      for (const item of rec.items) {
+        ensureAudit(item.itemId).excludedRecords.push({
+          source: 'automation',
+          date: rec.date,
+          vendor: rec.vendor,
+          orderDay: rec.orderDay,
+          coverDays: Array.isArray(rec.coverDays) ? rec.coverDays : [],
+          coverDaysCount: Array.isArray(rec.coverDays) ? rec.coverDays.length : 0,
+          reason: recordReason,
+          valueType: 'finalOrder',
+          value: Number(item.finalOrder) || 0,
+        });
+      }
+      continue;
+    }
+
+    const coverDaysCount = rec.coverDays.length;
+    for (const item of rec.items) {
+      const finalOrder = Number(item.finalOrder);
+      const audit = ensureAudit(item.itemId);
+      if (!Number.isFinite(finalOrder) || finalOrder <= 0) {
+        audit.excludedRecords.push({
+          source: 'automation',
+          date: rec.date,
+          vendor: rec.vendor,
+          orderDay: rec.orderDay,
+          coverDays: rec.coverDays,
+          coverDaysCount,
+          reason: getValueExclusionReason(item.finalOrder, 'finalOrder'),
+          valueType: 'finalOrder',
+          value: Number.isFinite(finalOrder) ? finalOrder : undefined,
+        });
+        continue;
+      }
+
+      const st = ensureStats(item.itemId);
+      const estimatedDailyUsage = finalOrder / coverDaysCount;
+      st.orderQuantities.push(finalOrder);
+      st.estimatedDailyUsages.push(estimatedDailyUsage);
+      if (!st.orderByDay[rec.orderDay]) st.orderByDay[rec.orderDay] = [];
+      st.orderByDay[rec.orderDay].push(finalOrder);
+      automationFinalOrderKeys.add(trainingKey(rec.date, rec.vendor, item.itemId));
+      audit.usedRecords.push({
+        source: 'automation',
+        date: rec.date,
+        vendor: rec.vendor,
+        orderDay: rec.orderDay,
+        coverDays: rec.coverDays,
+        coverDaysCount,
+        valueType: 'finalOrder',
+        value: finalOrder,
+        estimatedDailyUsage,
+      });
+    }
+  }
+
+  for (const rec of records) {
+    if (rec.vendor !== vendor || rec.date < cutoffDate) {
+      continue;
+    }
+
+    const recordReason = getTrainingRecordExclusionReason(rec.vendor, rec.orderDay, rec.coverDays);
+    if (recordReason) {
+      for (const item of rec.items) {
+        ensureAudit(item.itemId).excludedRecords.push({
+          source: 'today',
+          date: rec.date,
+          vendor: rec.vendor,
+          orderDay: rec.orderDay,
+          coverDays: Array.isArray(rec.coverDays) ? rec.coverDays : [],
+          coverDaysCount: Array.isArray(rec.coverDays) ? rec.coverDays.length : 0,
+          reason: recordReason,
+          valueType: 'order',
+          value: Number(item.order) || 0,
+        });
+      }
+      continue;
+    }
+
+    const coverDaysCount = rec.coverDays.length;
+    for (const item of rec.items) {
+      const audit = ensureAudit(item.itemId);
+      const st = ensureStats(item.itemId);
+      const orderAmt = Number(item.order);
+      const hasAutomationFinalOrder = automationFinalOrderKeys.has(trainingKey(rec.date, rec.vendor, item.itemId));
+      if (orderAmt > 0 && !hasAutomationFinalOrder) {
+        const estimatedDailyUsage = orderAmt / coverDaysCount;
+        st.orderQuantities.push(orderAmt);
+        st.estimatedDailyUsages.push(estimatedDailyUsage);
+        if (!st.orderByDay[rec.orderDay]) st.orderByDay[rec.orderDay] = [];
+        st.orderByDay[rec.orderDay].push(orderAmt);
+        audit.usedRecords.push({
+          source: 'today',
+          date: rec.date,
+          vendor: rec.vendor,
+          orderDay: rec.orderDay,
+          coverDays: rec.coverDays,
+          coverDaysCount,
+          valueType: 'order',
+          value: orderAmt,
+          estimatedDailyUsage,
+        });
+      } else {
+        audit.excludedRecords.push({
+          source: 'today',
+          date: rec.date,
+          vendor: rec.vendor,
+          orderDay: rec.orderDay,
+          coverDays: rec.coverDays,
+          coverDaysCount,
+          reason: hasAutomationFinalOrder ? '자동화 finalOrder 우선 사용' : getValueExclusionReason(item.order, 'order'),
+          valueType: 'order',
+          value: Number.isFinite(orderAmt) ? orderAmt : undefined,
+        });
+      }
+
+      const total = Number(item.totalStock) || 0;
+      if (total > 0) st.totalStocks.push(total);
+    }
+  }
+
+  for (const [itemId, st] of statsMap) {
+    const audit = ensureAudit(itemId);
+    const dayOrders = st.orderByDay[orderDay] || [];
+    const estimatedDailyUsage = avg(st.estimatedDailyUsages);
+    const defaultCandidate = estimatedDailyUsage > 0
+      ? estimatedDailyUsage * currentDefaultCoverDays
+      : (dayOrders.length > 0 ? mode(dayOrders) : (st.orderQuantities.length > 0 ? mode(st.orderQuantities) : 0));
+    const minThreshold = st.totalStocks.length > 0 ? median(st.totalStocks) : 0;
+
+    audit.estimatedDailyUsage = estimatedDailyUsage;
+    audit.averageOrderCandidate = defaultCandidate;
+    audit.minThresholdCandidate = minThreshold;
+    audit.totalStockSampleCount = st.totalStocks.length;
   }
 
   return result;
@@ -209,6 +434,22 @@ function isNormalTrainingRecord(vendor: 'farmers' | 'marketbom', orderDay: numbe
   const defaultCoverDaysCount = countCoverDays(getCoverDays(vendor, orderDay));
   if (defaultCoverDaysCount <= 0) return false;
   return coverDays.length <= defaultCoverDaysCount;
+}
+
+function getTrainingRecordExclusionReason(vendor: 'farmers' | 'marketbom', orderDay: number, coverDays: string[]): string | null {
+  if (!Array.isArray(coverDays)) return '커버일 없음';
+  if (coverDays.length <= 0) return '커버일 0';
+  const defaultCoverDaysCount = countCoverDays(getCoverDays(vendor, orderDay));
+  if (defaultCoverDaysCount <= 0) return '기본 커버일 없음';
+  if (coverDays.length > defaultCoverDaysCount) return '기본 커버일보다 긴 예외성 기록';
+  return null;
+}
+
+function getValueExclusionReason(value: unknown, fieldName: 'finalOrder' | 'order'): string {
+  if (value === undefined || value === null || value === '') return `${fieldName} 없음`;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return '값이 0 또는 비정상';
+  return `${fieldName} 없음`;
 }
 
 function trainingKey(date: string, vendor: string, itemId: string): string {

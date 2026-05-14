@@ -3,7 +3,7 @@ import { Vendor, RecorderType, AutomationItemData, AutomationRecord } from '@/ty
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { useRecords, useSettings } from '@/utils/storage';
 import { useAutomationRecords } from '@/utils/automationStorage';
-import { computeRecommendedOrder, getRecommendations } from '@/utils/recommendations';
+import { computeRecommendedOrder, getRecommendationAudits, getRecommendations } from '@/utils/recommendations';
 import { addAutomationRecord, deleteAutomationDraft, getAutomationRecordsByDate, loadAutomationDraft, saveAutomationDraft } from '@/utils/automationStorage';
 import { getItemsByVendor } from '@/config/items';
 import { getAutoInboundFromPrevOrder, getAutoInboundSignature, shouldShowInbound } from '@/utils/inboundLogic';
@@ -120,6 +120,10 @@ export function AutomationOrder() {
   const recommendations = useMemo(
     () => getRecommendations(records, vendor, dayOfWeek, settings, automationRecords),
     [records, vendor, dayOfWeek, settings, automationRecords]
+  );
+  const recommendationAudits = useMemo(
+    () => getRecommendationAudits(records, vendor, dayOfWeek, automationRecords),
+    [records, vendor, dayOfWeek, automationRecords]
   );
 
   useEffect(() => {
@@ -409,6 +413,7 @@ export function AutomationOrder() {
           coverDaysCount={coverDaysCount}
           defaultCoverDaysCount={defaultCoverDaysCount}
           leadDaysCount={leadDaysCount}
+          recommendationAudits={recommendationAudits}
         />
       ) : (
         <AutoMarketbomForm
@@ -420,6 +425,7 @@ export function AutomationOrder() {
           coverDaysCount={coverDaysCount}
           defaultCoverDaysCount={defaultCoverDaysCount}
           leadDaysCount={leadDaysCount}
+          recommendationAudits={recommendationAudits}
         />
       )}
 

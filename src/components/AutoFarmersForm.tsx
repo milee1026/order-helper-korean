@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import { AutomationItemData, AppSettings, DailyRecord } from '@/types';
 import { Input } from '@/components/ui/input';
 import { RatioSelector } from '@/components/RatioSelector';
-import { buildCoverageRecommendationPlan, getStockStatus } from '@/utils/recommendations';
+import { RecommendationAuditDetails } from '@/components/RecommendationAuditDetails';
+import { buildCoverageRecommendationPlan, getStockStatus, type RecommendationAudit } from '@/utils/recommendations';
 import { useRecords } from '@/utils/storage';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -22,6 +23,7 @@ interface Props {
   coverDaysCount?: number;
   defaultCoverDaysCount?: number;
   leadDaysCount?: number;
+  recommendationAudits?: Record<string, RecommendationAudit>;
 }
 
 type FieldType = 'number' | 'ratio';
@@ -186,6 +188,7 @@ export function AutoFarmersForm({
   coverDaysCount = 0,
   defaultCoverDaysCount = 0,
   leadDaysCount = 0,
+  recommendationAudits = {},
 }: Props) {
   const isMobile = useIsMobile();
   const records = useRecords();
@@ -270,6 +273,8 @@ export function AutoFarmersForm({
         const minThresholdOrderUnits = convertStockToOrderUnits(item.id, d.minThresholdCandidate);
         const plan = buildCoverageRecommendationPlan(currentStockOrderUnits, d.defaultOrderCandidate, safeCoverDays, safeDefaultDays, safeLeadDays);
         const status = hasItemInput(d) ? getStockStatus(currentStockOrderUnits, minThresholdOrderUnits) : '-';
+        const hasInput = hasItemInput(d);
+        const roundedRecommendation = normalizeOrderQuantity(item.id, plan.recommendedRaw);
 
         return (
           <div key={item.id} className="border rounded bg-background">
@@ -326,12 +331,23 @@ export function AutoFarmersForm({
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">추천 발주량</span>
                   <b className="text-primary">
-                    {hasItemInput(d)
-                      ? formatQuantityWithUnit(normalizeOrderQuantity(item.id, plan.recommendedRaw), getOrderUnit(item.id))
+                    {hasInput
+                      ? formatQuantityWithUnit(roundedRecommendation, getOrderUnit(item.id))
                       : '-'}
                   </b>
                 </div>
               </div>
+
+              <RecommendationAuditDetails
+                audit={recommendationAudits[item.id]}
+                currentStockConverted={currentStockOrderUnits}
+                leadDays={safeLeadDays}
+                plan={plan}
+                roundedRecommendation={roundedRecommendation}
+                orderUnit={getOrderUnit(item.id)}
+                stockUnit={getStockUnit(item.id)}
+                hasInput={hasInput}
+              />
 
               {item.id === 'f-broccoli' && broccoliAvg && (
                 <div className="text-xs text-blue-600">참고: 1kg ≈ {broccoliAvg}송이</div>
