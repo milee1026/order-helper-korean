@@ -1,5 +1,6 @@
-import { DailyRecord, AppSettings } from '@/types';
-import { getItemById } from '@/config/items';
+import { DailyRecord, AppSettings, AutomationRecord } from '@/types';
+import { getCoverDays } from '@/config/ordering';
+import { getKstDateString, shiftKstDateString } from '@/utils/date';
 
 interface ItemRecommendation {
   defaultOrderCandidate: number;
@@ -12,27 +13,61 @@ export function getRecommendations(
   records: DailyRecord[],
   vendor: 'farmers' | 'marketbom',
   orderDay: number,
-  _settings: AppSettings
+  _settings: AppSettings,
+  automationRecords: AutomationRecord[] = []
 ): Record<string, ItemRecommendation> {
   const result: Record<string, ItemRecommendation> = {};
-  const vendorRecords = records.filter(r => r.vendor === vendor);
+  const cutoffDate = shiftKstDateString(getKstDateString(), -28);
+  const currentDefaultCoverDays = countCoverDays(getCoverDays(vendor, orderDay)) || 1;
 
-  // Collect per-item stats
   const statsMap = new Map<string, {
     orderQuantities: number[];
     orderByDay: Record<number, number[]>;
     totalStocks: number[];
+    estimatedDailyUsages: number[];
   }>();
 
-  for (const rec of vendorRecords) {
+  const ensureStats = (itemId: string) => {
+    if (!statsMap.has(itemId)) {
+      statsMap.set(itemId, { orderQuantities: [], orderByDay: {}, totalStocks: [], estimatedDailyUsages: [] });
+    }
+    return statsMap.get(itemId)!;
+  };
+
+  const automationFinalOrderKeys = new Set<string>();
+
+  for (const rec of automationRecords) {
+    if (rec.vendor !== vendor || rec.date < cutoffDate || !isNormalTrainingRecord(rec.vendor, rec.orderDay, rec.coverDays)) {
+      continue;
+    }
+
+    const coverDaysCount = rec.coverDays.length;
     for (const item of rec.items) {
-      if (!statsMap.has(item.itemId)) {
-        statsMap.set(item.itemId, { orderQuantities: [], orderByDay: {}, totalStocks: [] });
-      }
-      const st = statsMap.get(item.itemId)!;
+      const finalOrder = Number(item.finalOrder) || 0;
+      if (finalOrder <= 0) continue;
+
+      const st = ensureStats(item.itemId);
+      st.orderQuantities.push(finalOrder);
+      st.estimatedDailyUsages.push(finalOrder / coverDaysCount);
+      if (!st.orderByDay[rec.orderDay]) st.orderByDay[rec.orderDay] = [];
+      st.orderByDay[rec.orderDay].push(finalOrder);
+      automationFinalOrderKeys.add(trainingKey(rec.date, rec.vendor, item.itemId));
+    }
+  }
+
+  for (const rec of records) {
+    if (rec.vendor !== vendor || rec.date < cutoffDate || !isNormalTrainingRecord(rec.vendor, rec.orderDay, rec.coverDays)) {
+      continue;
+    }
+
+    const coverDaysCount = rec.coverDays.length;
+    for (const item of rec.items) {
+      const st = ensureStats(item.itemId);
       const orderAmt = Number(item.order) || 0;
-      if (orderAmt > 0) {
+      const hasAutomationFinalOrder = automationFinalOrderKeys.has(trainingKey(rec.date, rec.vendor, item.itemId));
+      if (orderAmt > 0 && !hasAutomationFinalOrder) {
         st.orderQuantities.push(orderAmt);
+        st.estimatedDailyUsages.push(orderAmt / coverDaysCount);
         if (!st.orderByDay[rec.orderDay]) st.orderByDay[rec.orderDay] = [];
         st.orderByDay[rec.orderDay].push(orderAmt);
       }
@@ -43,9 +78,10 @@ export function getRecommendations(
 
   for (const [itemId, st] of statsMap) {
     const dayOrders = st.orderByDay[orderDay] || [];
-    const defaultCandidate = dayOrders.length > 0
-      ? mode(dayOrders)
-      : (st.orderQuantities.length > 0 ? mode(st.orderQuantities) : 0);
+    const estimatedDailyUsage = avg(st.estimatedDailyUsages);
+    const defaultCandidate = estimatedDailyUsage > 0
+      ? estimatedDailyUsage * currentDefaultCoverDays
+      : (dayOrders.length > 0 ? mode(dayOrders) : (st.orderQuantities.length > 0 ? mode(st.orderQuantities) : 0));
     const minThreshold = st.totalStocks.length > 0 ? median(st.totalStocks) : 0;
 
     result[itemId] = {
@@ -64,10 +100,10 @@ export function getRecommendations(
 }
 
 export interface CoverageRecommendationPlan {
-  dailyNeed: number;
-  leadNeed: number;
-  coverNeed: number;
-  remainingStockAfterLead: number;
+  estimatedDailyUsage: number;
+  estimatedPreInboundConsumption: number;
+  postInboundCoverNeed: number;
+  carryOverStock: number;
   recommendedRaw: number;
 }
 
@@ -84,30 +120,28 @@ export function buildCoverageRecommendationPlan(
 
   if (defaultOrderCandidate <= 0) {
     return {
-      dailyNeed: 0,
-      leadNeed: 0,
-      coverNeed: 0,
-      remainingStockAfterLead: Math.max(0, currentStock),
+      estimatedDailyUsage: 0,
+      estimatedPreInboundConsumption: 0,
+      postInboundCoverNeed: 0,
+      carryOverStock: Math.max(0, currentStock),
       recommendedRaw: 0,
     };
   }
 
-  // Historical average order translated into one day of demand.
-  const dailyNeed = defaultOrderCandidate / safeDefaultDays;
+  // 기록 기반 평균 발주량을 커버일수로 나눈 추정 일평균 사용량입니다.
+  const estimatedDailyUsage = defaultOrderCandidate / safeDefaultDays;
 
-  // Stock that will be used up before the next inbound can be consumed.
-  const leadNeed = dailyNeed * safeLeadDays;
-  const remainingStockAfterLead = Math.max(0, currentStock - leadNeed);
+  const estimatedPreInboundConsumption = estimatedDailyUsage * safeLeadDays;
+  const carryOverStock = Math.max(0, currentStock - estimatedPreInboundConsumption);
 
-  // Future order window that the next delivery must cover.
-  const coverNeed = dailyNeed * safeCoverDays;
+  const postInboundCoverNeed = estimatedDailyUsage * safeCoverDays;
 
   return {
-    dailyNeed,
-    leadNeed,
-    coverNeed,
-    remainingStockAfterLead,
-    recommendedRaw: Math.max(0, coverNeed - remainingStockAfterLead),
+    estimatedDailyUsage,
+    estimatedPreInboundConsumption,
+    postInboundCoverNeed,
+    carryOverStock,
+    recommendedRaw: Math.max(0, postInboundCoverNeed - carryOverStock),
   };
 }
 
@@ -160,4 +194,23 @@ function mode(arr: number[]): number {
     if (count > maxCount) { maxCount = count; result = val; }
   }
   return result;
+}
+
+function countCoverDays(value: string): number {
+  return value
+    .split(',')
+    .map((day) => day.trim())
+    .filter(Boolean)
+    .length;
+}
+
+function isNormalTrainingRecord(vendor: 'farmers' | 'marketbom', orderDay: number, coverDays: string[]): boolean {
+  if (!Array.isArray(coverDays) || coverDays.length <= 0) return false;
+  const defaultCoverDaysCount = countCoverDays(getCoverDays(vendor, orderDay));
+  if (defaultCoverDaysCount <= 0) return false;
+  return coverDays.length <= defaultCoverDaysCount;
+}
+
+function trainingKey(date: string, vendor: string, itemId: string): string {
+  return `${date}__${vendor}__${itemId}`;
 }

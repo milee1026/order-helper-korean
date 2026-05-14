@@ -123,7 +123,7 @@ const MEAT_ITEMS: ItemConfig[] = [
     ],
     totalLabel: '총재고(팩)',
     computeTotal: (v, s) => {
-      const ppt = s?.meatPacksPerTray?.['m-beef'] || 10;
+      const ppt = 5;
       return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0);
     },
   },
@@ -136,7 +136,7 @@ const MEAT_ITEMS: ItemConfig[] = [
     ],
     totalLabel: '총재고(팩)',
     computeTotal: (v, s) => {
-      const ppt = s?.meatPacksPerTray?.['m-pork'] || 10;
+      const ppt = 4;
       return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0);
     },
   },
@@ -149,7 +149,7 @@ const MEAT_ITEMS: ItemConfig[] = [
     ],
     totalLabel: '총재고(팩)',
     computeTotal: (v, s) => {
-      const ppt = s?.meatPacksPerTray?.['m-chicken'] || 10;
+      const ppt = 5;
       return (Number(v.unusedTrays) || 0) * ppt + (Number(v.openPacks) || 0);
     },
   },

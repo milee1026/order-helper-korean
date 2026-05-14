@@ -61,7 +61,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function computeMarketbomStock(itemId: string, values: Record<string, number | string>, settings: AppSettings): number {
   if (['m-beef', 'm-pork', 'm-chicken'].includes(itemId)) {
-    const ppt = settings.meatPacksPerTray?.[itemId] || 10;
+    const ppt = itemId === 'm-beef' ? 5 : itemId === 'm-pork' ? 4 : 5;
     return (Number(values.unusedTrays) || 0) * ppt + (Number(values.openPacks) || 0);
   }
 

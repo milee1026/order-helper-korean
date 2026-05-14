@@ -9,6 +9,12 @@ interface ItemUnits {
   stockUnit: string;
 }
 
+export const MEAT_PACKS_PER_TRAY: Record<'m-beef' | 'm-pork' | 'm-chicken', number> = {
+  'm-beef': 5,
+  'm-pork': 4,
+  'm-chicken': 5,
+};
+
 const ITEM_UNITS: Record<string, ItemUnits> = {
   // Farmers
   'f-salad': { orderUnit: 'kg', stockUnit: '락' },
@@ -127,7 +133,7 @@ export function getStockUnitsPerOrderUnit(itemId: string, settings?: AppSettings
     case 'm-beef':
     case 'm-pork':
     case 'm-chicken':
-      return settings?.meatPacksPerTray?.[itemId] || 10;
+      return MEAT_PACKS_PER_TRAY[itemId as keyof typeof MEAT_PACKS_PER_TRAY];
     case 'ms-salpa':
     case 'ms-rose':
     case 'ms-curry':

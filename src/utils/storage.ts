@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 import type { AppSettings, DailyRecord, ItemData, RecorderType } from '@/types';
 import { deleteRecordFromFirestore, replaceRecordsInFirestore, replaceSettingsInFirestore } from '@/lib/firestoreSync';
+import { MEAT_PACKS_PER_TRAY } from '@/utils/itemUnits';
 
 const RECORDS_KEY = 'inventory-records';
 const SETTINGS_KEY = 'inventory-settings';
@@ -15,7 +16,7 @@ export interface DraftData {
 
 export const defaultSettings: AppSettings = {
   trackingWeeks: 2,
-  meatPacksPerTray: { 'm-beef': 10, 'm-pork': 10, 'm-chicken': 10 },
+  meatPacksPerTray: { ...MEAT_PACKS_PER_TRAY },
 };
 
 const recordListeners = new Set<() => void>();
@@ -53,8 +54,8 @@ function normalizeSettings(settings: Partial<AppSettings> | null | undefined): A
   return {
     trackingWeeks: settings?.trackingWeeks === 4 ? 4 : 2,
     meatPacksPerTray: {
-      ...defaultSettings.meatPacksPerTray,
       ...(settings?.meatPacksPerTray ?? {}),
+      ...MEAT_PACKS_PER_TRAY,
     },
   };
 }

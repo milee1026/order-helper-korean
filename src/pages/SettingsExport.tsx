@@ -102,7 +102,7 @@ export function SettingsExport() {
               <Input
                 type="number"
                 className="w-20 h-7 text-xs"
-                value={settings.meatPacksPerTray[m.id] || 10}
+                value={settings.meatPacksPerTray[m.id] || (m.id === 'm-beef' ? 5 : m.id === 'm-pork' ? 4 : 5)}
                 onChange={e => updateMeatPacks(m.id, Number(e.target.value))}
               />
               <span className="text-muted-foreground">팩/판</span>

@@ -118,8 +118,8 @@ export function AutomationOrder() {
   );
   const autoInboundSignature = useMemo(() => getAutoInboundSignature(autoInbound), [autoInbound]);
   const recommendations = useMemo(
-    () => getRecommendations(records, vendor, dayOfWeek, settings),
-    [records, vendor, dayOfWeek, settings]
+    () => getRecommendations(records, vendor, dayOfWeek, settings, automationRecords),
+    [records, vendor, dayOfWeek, settings, automationRecords]
   );
 
   useEffect(() => {
