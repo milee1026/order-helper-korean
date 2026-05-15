@@ -39,6 +39,10 @@ export function RecommendationAuditDetails({
   const [open, setOpen] = useState(false);
   const usedRecords = audit?.usedRecords || [];
   const excludedRecords = audit?.excludedRecords || [];
+  const usedTargetCandidates = audit?.targetCandidates?.filter(candidate => candidate.usedForTarget) || [];
+  const targetCoverPatterns = Array.from(
+    new Set(usedTargetCandidates.map(candidate => candidate.coverDays.join(',') || '-'))
+  );
 
   return (
     <div className="mt-2 text-xs">
@@ -58,20 +62,24 @@ export function RecommendationAuditDetails({
             <div>estimatedDailyUsage: <b>{fmt(audit?.estimatedDailyUsage, orderUnit)}/일</b></div>
             <div>평균발주량: <b>{fmt(audit?.averageOrderCandidate, orderUnit)}</b></div>
             <div>중앙값 발주량: <b>{fmt(audit?.medianOrderCandidate, orderUnit)}</b></div>
+            <div>learnedTargetCoverStock: <b>{fmt(audit?.learnedTargetCoverStock, orderUnit)}</b></div>
+            <div>averageTargetCoverStock: <b>{fmt(audit?.averageTargetCoverStock, orderUnit)}</b></div>
             <div>최소재고량: <b>{fmt(audit?.minThresholdCandidate, stockUnit)}</b></div>
             <div>현재재고 환산값: <b>{hasInput ? fmt(currentStockConverted, orderUnit) : '-'}</b></div>
             <div>leadDays: <b>{leadDays}</b></div>
+            <div>사용자 입력 커버일: <b>{audit?.userCoverDays?.length ? audit.userCoverDays.join(',') : '기본값 사용'}</b></div>
+            <div>최종 적용 커버일: <b>{audit?.appliedCoverDays?.join(',') || '-'}</b></div>
+            <div>최종 적용 커버일수: <b>{audit?.appliedCoverDaysCount ?? '-'}</b></div>
+            <div>기본 커버일수: <b>{audit?.defaultCoverDaysCount ?? '-'}</b></div>
+            <div>target 학습 커버일 패턴: <b>{targetCoverPatterns.length ? targetCoverPatterns.join(' / ') : '-'}</b></div>
+            <div>fallback 단계: <b>{audit ? `${audit.targetFallbackLevel}순위 - ${audit.targetFallbackLabel}` : '-'}</b></div>
+            <div>추천 신뢰도: <b>{audit?.targetConfidence || '-'}</b></div>
             <div>입고 전 예상 소진량: <b>{hasInput ? fmt(plan.estimatedPreInboundConsumption, orderUnit) : '-'}</b></div>
             <div>carryOver 재고: <b>{hasInput ? fmt(plan.carryOverStock, orderUnit) : '-'}</b></div>
             <div>carryOverRatio: <b>{hasInput ? `${Math.round(plan.carryOverRatio * 100)}%` : '-'}</b></div>
             <div>입고 후 커버 필요량: <b>{hasInput ? fmt(plan.postInboundCoverNeed, orderUnit) : '-'}</b></div>
-            <div>기본 수요 계산값: <b>{hasInput ? fmt(plan.recommendationByDemand, orderUnit) : '-'}</b></div>
-            <div>평균 하한 후보: <b>{hasInput ? fmt(plan.averageFloorCandidate, orderUnit) : '-'}</b></div>
-            <div>중앙값 하한 후보: <b>{hasInput ? fmt(plan.medianFloorCandidate, orderUnit) : '-'}</b></div>
-            <div>최소 안전 후보: <b>{hasInput ? fmt(plan.categoryMinimumCandidate, orderUnit) : '-'}</b></div>
-            <div>하한 적용 상태: <b>{hasInput ? plan.floorStatus : '-'}</b></div>
-            <div>하한 적용 강도: <b>{hasInput ? `${Math.round(plan.floorWeight * 100)}%` : '-'}</b></div>
-            <div>보정 후 raw: <b>{hasInput ? fmt(plan.recommendationRawBeforeRounding, orderUnit) : '-'}</b></div>
+            <div>기존 수요 fallback값: <b>{hasInput ? fmt(plan.recommendationByDemand, orderUnit) : '-'}</b></div>
+            <div>recommendedRaw = target - carryOver: <b>{hasInput ? fmt(plan.recommendationRawBeforeRounding, orderUnit) : '-'}</b></div>
             <div>최종 추천값: <b>{hasInput ? fmt(roundedRecommendation, orderUnit) : '-'}</b></div>
             <div>발주 단위: <b>{orderUnit || '-'}</b></div>
             <div>반올림/올림 방식: <b>{hasInput ? roundingPolicy : '-'}</b></div>
@@ -92,6 +100,50 @@ export function RecommendationAuditDetails({
               <div className="text-muted-foreground">
                 {hasInput ? '추가 보정 없이 기본 수요 계산값을 사용했습니다.' : '현재재고 입력 후 계산 근거를 확인할 수 있습니다.'}
               </div>
+            )}
+          </div>
+
+          <div>
+            <div className="font-medium mb-1">historicalTargetCoverStock 후보</div>
+            {audit?.targetCandidates?.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[920px] border-collapse">
+                  <thead>
+                    <tr className="bg-background">
+                      <th className="border px-1 py-1">날짜</th>
+                      <th className="border px-1 py-1">출처</th>
+                      <th className="border px-1 py-1">커버일</th>
+                      <th className="border px-1 py-1">커버일수</th>
+                      <th className="border px-1 py-1">historicalFinalOrder</th>
+                      <th className="border px-1 py-1">historicalCurrentStock</th>
+                      <th className="border px-1 py-1">historicalEstimatedDailyUsage</th>
+                      <th className="border px-1 py-1">입고 전 예상 소진</th>
+                      <th className="border px-1 py-1">historicalCarryOver</th>
+                      <th className="border px-1 py-1">historicalTargetCoverStock</th>
+                      <th className="border px-1 py-1">target 학습</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {audit.targetCandidates.map((candidate) => (
+                      <tr key={candidate.id}>
+                        <td className="border px-1 py-1">{candidate.date}</td>
+                        <td className="border px-1 py-1">{sourceLabel(candidate.source)}</td>
+                        <td className="border px-1 py-1">{candidate.coverDays.join(',') || '-'}</td>
+                        <td className="border px-1 py-1 text-center">{candidate.coverDaysCount}</td>
+                        <td className="border px-1 py-1 text-right">{fmt(candidate.historicalFinalOrder, orderUnit)}</td>
+                        <td className="border px-1 py-1 text-right">{fmt(candidate.historicalCurrentStock, orderUnit)}</td>
+                        <td className="border px-1 py-1 text-right">{fmt(candidate.historicalEstimatedDailyUsage, orderUnit)}/일</td>
+                        <td className="border px-1 py-1 text-right">{fmt(candidate.historicalPreInboundExpectedConsumption, orderUnit)}</td>
+                        <td className="border px-1 py-1 text-right">{fmt(candidate.historicalCarryOver, orderUnit)}</td>
+                        <td className="border px-1 py-1 text-right">{candidate.excludedReason ? '-' : fmt(candidate.historicalTargetCoverStock, orderUnit)}</td>
+                        <td className="border px-1 py-1">{candidate.usedForTarget ? '사용됨' : (candidate.excludedReason || 'fallback 미선택')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-muted-foreground">targetCoverStock 후보가 없습니다.</div>
             )}
           </div>
 

@@ -19,6 +19,11 @@ interface RecommendationSummary {
   minThresholdCandidate: number;
   medianOrderCandidate?: number;
   trainingRecordCount?: number;
+  learnedTargetCoverStock?: number;
+  averageTargetCoverStock?: number;
+  targetFallbackLevel?: number;
+  targetFallbackLabel?: string;
+  targetConfidence?: string;
 }
 
 interface Props {
@@ -215,8 +220,11 @@ export function AutoFarmersForm({
     const minThr = rec?.minThresholdCandidate || current.minThresholdCandidate;
     const currentStockOrderUnits = convertStockToOrderUnits(id, stock);
     const plan = buildSafeCoverageRecommendationPlan(id, currentStockOrderUnits, defOrd, safeCoverDays, safeDefaultDays, safeLeadDays, {
-      medianOrderCandidate: rec?.medianOrderCandidate,
-      trainingRecordCount: rec?.trainingRecordCount,
+      learnedTargetCoverStock: rec?.learnedTargetCoverStock,
+      averageTargetCoverStock: rec?.averageTargetCoverStock,
+      targetFallbackLevel: rec?.targetFallbackLevel,
+      targetFallbackLabel: rec?.targetFallbackLabel,
+      targetConfidence: rec?.targetConfidence,
     });
     const recommended = normalizeOrderQuantityWithPolicy(id, plan.recommendedRaw, {
       averageOrderCandidate: defOrd,
@@ -286,8 +294,11 @@ export function AutoFarmersForm({
         const currentStockOrderUnits = convertStockToOrderUnits(item.id, d.currentStock);
         const minThresholdOrderUnits = convertStockToOrderUnits(item.id, d.minThresholdCandidate);
         const plan = buildSafeCoverageRecommendationPlan(item.id, currentStockOrderUnits, d.defaultOrderCandidate, safeCoverDays, safeDefaultDays, safeLeadDays, {
-          medianOrderCandidate: rec?.medianOrderCandidate,
-          trainingRecordCount: rec?.trainingRecordCount,
+          learnedTargetCoverStock: rec?.learnedTargetCoverStock,
+          averageTargetCoverStock: rec?.averageTargetCoverStock,
+          targetFallbackLevel: rec?.targetFallbackLevel,
+          targetFallbackLabel: rec?.targetFallbackLabel,
+          targetConfidence: rec?.targetConfidence,
         });
         const status = hasItemInput(d) ? getStockStatus(currentStockOrderUnits, minThresholdOrderUnits) : '-';
         const hasInput = hasItemInput(d);

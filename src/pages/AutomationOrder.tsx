@@ -118,12 +118,12 @@ export function AutomationOrder() {
   );
   const autoInboundSignature = useMemo(() => getAutoInboundSignature(autoInbound), [autoInbound]);
   const recommendations = useMemo(
-    () => getRecommendations(records, vendor, dayOfWeek, settings, automationRecords),
-    [records, vendor, dayOfWeek, settings, automationRecords]
+    () => getRecommendations(records, vendor, dayOfWeek, settings, automationRecords, effectiveCoverDaysInput),
+    [records, vendor, dayOfWeek, settings, automationRecords, effectiveCoverDaysInput]
   );
   const recommendationAudits = useMemo(
-    () => getRecommendationAudits(records, vendor, dayOfWeek, automationRecords),
-    [records, vendor, dayOfWeek, automationRecords]
+    () => getRecommendationAudits(records, vendor, dayOfWeek, settings, automationRecords, effectiveCoverDaysInput, coverDaysInput),
+    [records, vendor, dayOfWeek, settings, automationRecords, effectiveCoverDaysInput, coverDaysInput]
   );
 
   useEffect(() => {
@@ -259,8 +259,11 @@ export function AutomationOrder() {
             defaultCoverDaysCount,
             leadDaysCount,
             {
-              medianOrderCandidate: rec?.medianOrderCandidate,
-              trainingRecordCount: rec?.trainingRecordCount,
+              learnedTargetCoverStock: rec?.learnedTargetCoverStock,
+              averageTargetCoverStock: rec?.averageTargetCoverStock,
+              targetFallbackLevel: rec?.targetFallbackLevel,
+              targetFallbackLabel: rec?.targetFallbackLabel,
+              targetConfidence: rec?.targetConfidence,
             }
           );
           return normalizeOrderQuantityWithPolicy(cfg.id, plan.recommendedRaw, {

@@ -20,6 +20,11 @@ interface RecommendationSummary {
   minThresholdCandidate: number;
   medianOrderCandidate?: number;
   trainingRecordCount?: number;
+  learnedTargetCoverStock?: number;
+  averageTargetCoverStock?: number;
+  targetFallbackLevel?: number;
+  targetFallbackLabel?: string;
+  targetConfidence?: string;
 }
 
 interface Props {
@@ -145,8 +150,11 @@ export function AutoMarketbomForm({
     const minThr = rec?.minThresholdCandidate || current.minThresholdCandidate;
     const currentStockOrderUnits = convertStockToOrderUnits(itemId, stock, settings);
     const plan = buildSafeCoverageRecommendationPlan(itemId, currentStockOrderUnits, defOrd, safeCoverDays, safeDefaultDays, safeLeadDays, {
-      medianOrderCandidate: rec?.medianOrderCandidate,
-      trainingRecordCount: rec?.trainingRecordCount,
+      learnedTargetCoverStock: rec?.learnedTargetCoverStock,
+      averageTargetCoverStock: rec?.averageTargetCoverStock,
+      targetFallbackLevel: rec?.targetFallbackLevel,
+      targetFallbackLabel: rec?.targetFallbackLabel,
+      targetConfidence: rec?.targetConfidence,
     });
     const recommended = normalizeOrderQuantityWithPolicy(itemId, plan.recommendedRaw, {
       averageOrderCandidate: defOrd,
@@ -201,8 +209,11 @@ export function AutoMarketbomForm({
                   const currentStockOrderUnits = convertStockToOrderUnits(item.id, d.currentStock, settings);
                   const minThresholdOrderUnits = convertStockToOrderUnits(item.id, d.minThresholdCandidate, settings);
                   const plan = buildSafeCoverageRecommendationPlan(item.id, currentStockOrderUnits, d.defaultOrderCandidate, safeCoverDays, safeDefaultDays, safeLeadDays, {
-                    medianOrderCandidate: rec?.medianOrderCandidate,
-                    trainingRecordCount: rec?.trainingRecordCount,
+                    learnedTargetCoverStock: rec?.learnedTargetCoverStock,
+                    averageTargetCoverStock: rec?.averageTargetCoverStock,
+                    targetFallbackLevel: rec?.targetFallbackLevel,
+                    targetFallbackLabel: rec?.targetFallbackLabel,
+                    targetConfidence: rec?.targetConfidence,
                   });
                   const status = hasItemInput(d) ? getStockStatus(currentStockOrderUnits, minThresholdOrderUnits) : '-';
                   const hasInput = hasItemInput(d);
@@ -317,8 +328,11 @@ export function AutoMarketbomForm({
                     const currentStockOrderUnits = convertStockToOrderUnits(item.id, d.currentStock, settings);
                     const minThresholdOrderUnits = convertStockToOrderUnits(item.id, d.minThresholdCandidate, settings);
                     const plan = buildSafeCoverageRecommendationPlan(item.id, currentStockOrderUnits, d.defaultOrderCandidate, safeCoverDays, safeDefaultDays, safeLeadDays, {
-                      medianOrderCandidate: rec?.medianOrderCandidate,
-                      trainingRecordCount: rec?.trainingRecordCount,
+                      learnedTargetCoverStock: rec?.learnedTargetCoverStock,
+                      averageTargetCoverStock: rec?.averageTargetCoverStock,
+                      targetFallbackLevel: rec?.targetFallbackLevel,
+                      targetFallbackLabel: rec?.targetFallbackLabel,
+                      targetConfidence: rec?.targetConfidence,
                     });
                     const status = hasItemInput(d) ? getStockStatus(currentStockOrderUnits, minThresholdOrderUnits) : '-';
                     const hasInput = hasItemInput(d);

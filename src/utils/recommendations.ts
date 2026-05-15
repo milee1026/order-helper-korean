@@ -1,12 +1,20 @@
 import { DailyRecord, AppSettings, AutomationRecord } from '@/types';
-import { getCoverDays } from '@/config/ordering';
+import { getCoverDays, getLeadDays } from '@/config/ordering';
+import { getItemById } from '@/config/items';
 import { getKstDateString, shiftKstDateString } from '@/utils/date';
+import { convertStockToOrderUnits } from '@/utils/itemUnits';
+import { readCompatibleTotalStock } from '@/utils/recordCompatibility';
 
 interface ItemRecommendation {
   defaultOrderCandidate: number;
   minThresholdCandidate: number;
   medianOrderCandidate: number;
   trainingRecordCount: number;
+  learnedTargetCoverStock: number;
+  averageTargetCoverStock: number;
+  targetFallbackLevel: number;
+  targetFallbackLabel: string;
+  targetConfidence: string;
   avgOrderByDay: Record<number, number>;
   modeOrderByDay: Record<number, number>;
 }
@@ -35,6 +43,25 @@ export interface RecommendationTrainingExclusion {
   value?: number;
 }
 
+export interface RecommendationTargetCandidate {
+  id: string;
+  source: 'automation' | 'today';
+  date: string;
+  vendor: 'farmers' | 'marketbom';
+  orderDay: number;
+  coverDays: string[];
+  coverDaysCount: number;
+  valueType: 'finalOrder' | 'order';
+  historicalFinalOrder: number;
+  historicalCurrentStock: number;
+  historicalEstimatedDailyUsage: number;
+  historicalPreInboundExpectedConsumption: number;
+  historicalCarryOver: number;
+  historicalTargetCoverStock: number;
+  usedForTarget: boolean;
+  excludedReason?: string;
+}
+
 export interface RecommendationAudit {
   itemId: string;
   cutoffDate: string;
@@ -46,6 +73,15 @@ export interface RecommendationAudit {
   medianOrderCandidate: number;
   minThresholdCandidate: number;
   totalStockSampleCount: number;
+  targetCandidates: RecommendationTargetCandidate[];
+  learnedTargetCoverStock: number;
+  averageTargetCoverStock: number;
+  targetFallbackLevel: number;
+  targetFallbackLabel: string;
+  targetConfidence: string;
+  userCoverDays: string[];
+  appliedCoverDays: string[];
+  appliedCoverDaysCount: number;
 }
 
 export interface RecommendationAdjustment {
@@ -54,20 +90,26 @@ export interface RecommendationAdjustment {
 }
 
 export interface SafetyRecommendationOptions {
-  medianOrderCandidate?: number;
-  trainingRecordCount?: number;
+  learnedTargetCoverStock?: number;
+  averageTargetCoverStock?: number;
+  targetFallbackLevel?: number;
+  targetFallbackLabel?: string;
+  targetConfidence?: string;
 }
 
 export function getRecommendations(
   records: DailyRecord[],
   vendor: 'farmers' | 'marketbom',
   orderDay: number,
-  _settings: AppSettings,
-  automationRecords: AutomationRecord[] = []
+  settings: AppSettings,
+  automationRecords: AutomationRecord[] = [],
+  appliedCoverDaysInput = ''
 ): Record<string, ItemRecommendation> {
   const result: Record<string, ItemRecommendation> = {};
   const cutoffDate = shiftKstDateString(getKstDateString(), -28);
   const currentDefaultCoverDays = countCoverDays(getCoverDays(vendor, orderDay)) || 1;
+  const appliedCoverDays = parseCoverDays(appliedCoverDaysInput || getCoverDays(vendor, orderDay));
+  const targetCandidatesByItem = collectTargetCandidates(records, automationRecords, vendor, cutoffDate, settings);
 
   const statsMap = new Map<string, {
     orderQuantities: number[];
@@ -133,12 +175,18 @@ export function getRecommendations(
       : (dayOrders.length > 0 ? mode(dayOrders) : (st.orderQuantities.length > 0 ? mode(st.orderQuantities) : 0));
     const medianOrderCandidate = st.orderQuantities.length > 0 ? median(st.orderQuantities) : 0;
     const minThreshold = st.totalStocks.length > 0 ? median(st.totalStocks) : 0;
+    const targetSelection = selectTargetCandidates(targetCandidatesByItem[itemId] || [], vendor, orderDay, appliedCoverDays);
 
     result[itemId] = {
       defaultOrderCandidate: defaultCandidate,
       minThresholdCandidate: minThreshold,
       medianOrderCandidate,
       trainingRecordCount: st.orderQuantities.length,
+      learnedTargetCoverStock: targetSelection.learnedTargetCoverStock,
+      averageTargetCoverStock: targetSelection.averageTargetCoverStock,
+      targetFallbackLevel: targetSelection.fallbackLevel,
+      targetFallbackLabel: targetSelection.fallbackLabel,
+      targetConfidence: targetSelection.confidence,
       avgOrderByDay: Object.fromEntries(
         Object.entries(st.orderByDay).map(([d, vals]) => [d, avg(vals)])
       ),
@@ -155,11 +203,17 @@ export function getRecommendationAudits(
   records: DailyRecord[],
   vendor: 'farmers' | 'marketbom',
   orderDay: number,
-  automationRecords: AutomationRecord[] = []
+  settings: AppSettings,
+  automationRecords: AutomationRecord[] = [],
+  appliedCoverDaysInput = '',
+  userCoverDaysInput = ''
 ): Record<string, RecommendationAudit> {
   const result: Record<string, RecommendationAudit> = {};
   const cutoffDate = shiftKstDateString(getKstDateString(), -28);
   const currentDefaultCoverDays = countCoverDays(getCoverDays(vendor, orderDay)) || 1;
+  const appliedCoverDays = parseCoverDays(appliedCoverDaysInput || getCoverDays(vendor, orderDay));
+  const userCoverDays = parseCoverDays(userCoverDaysInput);
+  const targetCandidatesByItem = collectTargetCandidates(records, automationRecords, vendor, cutoffDate, settings);
 
   const statsMap = new Map<string, {
     orderQuantities: number[];
@@ -188,6 +242,15 @@ export function getRecommendationAudits(
         medianOrderCandidate: 0,
         minThresholdCandidate: 0,
         totalStockSampleCount: 0,
+        targetCandidates: [],
+        learnedTargetCoverStock: 0,
+        averageTargetCoverStock: 0,
+        targetFallbackLevel: 4,
+        targetFallbackLabel: '기존 estimatedDailyUsage 기반 fallback',
+        targetConfidence: '임시 추천',
+        userCoverDays,
+        appliedCoverDays,
+        appliedCoverDaysCount: appliedCoverDays.length,
       };
     }
     return result[itemId];
@@ -340,6 +403,24 @@ export function getRecommendationAudits(
     audit.totalStockSampleCount = st.totalStocks.length;
   }
 
+  for (const [itemId, candidates] of Object.entries(targetCandidatesByItem)) {
+    const audit = ensureAudit(itemId);
+    const targetSelection = selectTargetCandidates(candidates, vendor, orderDay, appliedCoverDays);
+    const usedIds = new Set(targetSelection.candidates.map(candidate => candidate.id));
+    audit.targetCandidates = candidates.map(candidate => ({
+      ...candidate,
+      usedForTarget: usedIds.has(candidate.id),
+    }));
+    audit.learnedTargetCoverStock = targetSelection.learnedTargetCoverStock;
+    audit.averageTargetCoverStock = targetSelection.averageTargetCoverStock;
+    audit.targetFallbackLevel = targetSelection.fallbackLevel;
+    audit.targetFallbackLabel = targetSelection.fallbackLabel;
+    audit.targetConfidence = targetSelection.confidence;
+    audit.userCoverDays = userCoverDays;
+    audit.appliedCoverDays = appliedCoverDays;
+    audit.appliedCoverDaysCount = appliedCoverDays.length;
+  }
+
   return result;
 }
 
@@ -350,11 +431,11 @@ export interface CoverageRecommendationPlan {
   carryOverStock: number;
   carryOverRatio: number;
   recommendationByDemand: number;
-  averageFloorCandidate: number;
-  medianFloorCandidate: number;
-  categoryMinimumCandidate: number;
-  floorWeight: number;
-  floorStatus: string;
+  learnedTargetCoverStock: number;
+  averageTargetCoverStock: number;
+  targetFallbackLevel: number;
+  targetFallbackLabel: string;
+  targetConfidence: string;
   recommendationRawBeforeRounding: number;
   recommendedRaw: number;
   appliedAdjustments: RecommendationAdjustment[];
@@ -380,11 +461,11 @@ export function buildCoverageRecommendationPlan(
       carryOverStock,
       carryOverRatio: 1,
       recommendationByDemand: 0,
-      averageFloorCandidate: 0,
-      medianFloorCandidate: 0,
-      categoryMinimumCandidate: 0,
-      floorWeight: 0,
-      floorStatus: '평균발주량이 없어 하한 보정을 적용하지 않음',
+      learnedTargetCoverStock: 0,
+      averageTargetCoverStock: 0,
+      targetFallbackLevel: 4,
+      targetFallbackLabel: '기존 estimatedDailyUsage 기반 fallback',
+      targetConfidence: '임시 추천',
       recommendationRawBeforeRounding: 0,
       recommendedRaw: 0,
       appliedAdjustments: [],
@@ -408,11 +489,11 @@ export function buildCoverageRecommendationPlan(
     carryOverStock,
     carryOverRatio,
     recommendationByDemand,
-    averageFloorCandidate: 0,
-    medianFloorCandidate: 0,
-    categoryMinimumCandidate: 0,
-    floorWeight: 0,
-    floorStatus: '기본 수요 계산만 적용',
+    learnedTargetCoverStock: 0,
+    averageTargetCoverStock: 0,
+    targetFallbackLevel: 4,
+    targetFallbackLabel: '기존 estimatedDailyUsage 기반 fallback',
+    targetConfidence: '임시 추천',
     recommendationRawBeforeRounding: recommendationByDemand,
     recommendedRaw: recommendationByDemand,
     appliedAdjustments: [],
@@ -435,84 +516,42 @@ export function buildSafeCoverageRecommendationPlan(
     defaultCoverDaysCount,
     leadDaysCount
   );
-  const policy = getItemSafetyPolicy(itemId);
-  const medianOrderCandidate = Math.max(0, Number(options.medianOrderCandidate) || 0);
-  const trainingRecordCount = Math.max(0, Number(options.trainingRecordCount) || 0);
+  void itemId;
   const appliedAdjustments: RecommendationAdjustment[] = [];
+  const learnedTargetCoverStock = Math.max(0, Number(options.learnedTargetCoverStock) || 0);
+  const averageTargetCoverStock = Math.max(0, Number(options.averageTargetCoverStock) || 0);
+  const targetFallbackLevel = Number(options.targetFallbackLevel) || 4;
+  const targetFallbackLabel = options.targetFallbackLabel || '기존 estimatedDailyUsage 기반 fallback';
+  const targetConfidence = options.targetConfidence || '임시 추천';
 
-  if (base.postInboundCoverNeed <= 0 || base.recommendationByDemand <= 0) {
+  if (learnedTargetCoverStock <= 0) {
     return {
       ...base,
-      floorStatus: '입고 후 커버 필요량이 없어 하한 보정을 적용하지 않음',
-      appliedAdjustments,
+      learnedTargetCoverStock: 0,
+      averageTargetCoverStock,
+      targetFallbackLevel,
+      targetFallbackLabel,
+      targetConfidence,
+      appliedAdjustments: [{
+        label: 'target fallback',
+        reason: '학습 가능한 targetCoverStock이 없어 기존 수요 기반 계산값을 임시 추천으로 사용',
+      }],
     };
   }
 
-  const floorWeight = getFloorWeight(base.carryOverRatio);
-  const floorStatus = getFloorStatus(base.carryOverRatio, floorWeight);
-
-  if (floorWeight <= 0) {
-    appliedAdjustments.push({
-      label: '하한 해제',
-      reason: 'carryOver가 입고 후 커버 필요량을 충분히 덮어 평균/중앙값/최소 하한을 모두 끔',
-    });
-    return {
-      ...base,
-      floorWeight,
-      floorStatus,
-      appliedAdjustments,
-    };
-  }
-
-  const averageFloorBase = defaultOrderCandidate > 0 ? defaultOrderCandidate * policy.floorRatio : 0;
-  const medianFloorBase = medianOrderCandidate > 0 ? medianOrderCandidate * policy.medianFloorRatio : 0;
-  const averageFloorCandidate = softenFloorCandidate(base.recommendationByDemand, averageFloorBase, floorWeight);
-  const medianFloorCandidate = softenFloorCandidate(base.recommendationByDemand, medianFloorBase, floorWeight);
-  const categoryMinimumBase = getCategoryMinimumCandidate(itemId, policy, {
-    averageOrderCandidate: defaultOrderCandidate,
-    medianOrderCandidate,
-    trainingRecordCount,
-    coverDaysCount: Number.isFinite(coverDaysCount) && coverDaysCount > 0 ? coverDaysCount : defaultCoverDaysCount,
-    carryOverRatio: base.carryOverRatio,
-    postInboundCoverNeed: base.postInboundCoverNeed,
+  const recommendationRawBeforeRounding = Math.max(0, learnedTargetCoverStock - base.carryOverStock);
+  appliedAdjustments.push({
+    label: 'targetCoverStock 추천 적용',
+    reason: `${targetFallbackLabel} (${targetConfidence}) 기준 learnedTargetCoverStock에서 currentCarryOver만 차감`,
   });
-  const categoryMinimumCandidate = softenFloorCandidate(base.recommendationByDemand, categoryMinimumBase, floorWeight);
-
-  let recommendationRawBeforeRounding = Math.max(
-    base.recommendationByDemand,
-    averageFloorCandidate,
-    medianFloorCandidate,
-    categoryMinimumCandidate
-  );
-
-  if (averageFloorCandidate > base.recommendationByDemand) {
-    appliedAdjustments.push({
-      label: '평균 하한 적용',
-      reason: `${policy.name} floorRatio ${policy.floorRatio} 기준, carryOver 상태에 따라 약하게 반영`,
-    });
-  }
-  if (medianFloorCandidate > Math.max(base.recommendationByDemand, averageFloorCandidate)) {
-    appliedAdjustments.push({
-      label: '중앙값 하한 적용',
-      reason: `${policy.name} medianFloorRatio ${policy.medianFloorRatio} 기준, 최근 정상 중앙값 반영`,
-    });
-  }
-  if (categoryMinimumCandidate > Math.max(base.recommendationByDemand, averageFloorCandidate, medianFloorCandidate)) {
-    appliedAdjustments.push({
-      label: '최소 안전 추천 적용',
-      reason: '학습 기록이 충분하고 carryOver가 낮아 제한적 최소 안전 추천값을 반영',
-    });
-  }
-
-  recommendationRawBeforeRounding = Math.max(0, recommendationRawBeforeRounding);
 
   return {
     ...base,
-    averageFloorCandidate,
-    medianFloorCandidate,
-    categoryMinimumCandidate,
-    floorWeight,
-    floorStatus,
+    learnedTargetCoverStock,
+    averageTargetCoverStock,
+    targetFallbackLevel,
+    targetFallbackLabel,
+    targetConfidence,
     recommendationRawBeforeRounding,
     recommendedRaw: recommendationRawBeforeRounding,
     appliedAdjustments,
@@ -556,99 +595,196 @@ function avg(arr: number[]): number {
   return Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100;
 }
 
-interface ItemSafetyPolicy {
-  name: string;
-  floorRatio: number;
-  medianFloorRatio: number;
-  categoryMinimum: number;
-  allowCategoryMinimum: boolean;
+function collectTargetCandidates(
+  records: DailyRecord[],
+  automationRecords: AutomationRecord[],
+  vendor: 'farmers' | 'marketbom',
+  cutoffDate: string,
+  settings: AppSettings
+): Record<string, RecommendationTargetCandidate[]> {
+  const result: Record<string, RecommendationTargetCandidate[]> = {};
+  const automationFinalOrderKeys = new Set<string>();
+
+  const addCandidate = (itemId: string, candidate: RecommendationTargetCandidate) => {
+    if (!result[itemId]) result[itemId] = [];
+    result[itemId].push(candidate);
+  };
+
+  for (const rec of automationRecords) {
+    if (rec.vendor !== vendor || rec.date < cutoffDate) continue;
+    const recordReason = getTrainingRecordExclusionReason(rec.vendor, rec.orderDay, rec.coverDays);
+    const coverDays = Array.isArray(rec.coverDays) ? rec.coverDays : [];
+    const coverDaysCount = coverDays.length;
+
+    for (const item of rec.items) {
+      const finalOrder = Number(item.finalOrder);
+      const exclusionReason = recordReason || getTargetValueExclusionReason(item.finalOrder, 'finalOrder');
+      const currentStock = convertStockToOrderUnits(item.itemId, Number(item.currentStock) || 0, settings);
+      const candidate = buildTargetCandidate({
+        id: targetCandidateId('automation', rec.date, rec.vendor, item.itemId),
+        source: 'automation',
+        date: rec.date,
+        vendor: rec.vendor,
+        orderDay: rec.orderDay,
+        coverDays,
+        coverDaysCount,
+        valueType: 'finalOrder',
+        finalOrder: Number.isFinite(finalOrder) ? finalOrder : 0,
+        currentStock,
+        excludedReason: exclusionReason,
+      });
+      addCandidate(item.itemId, candidate);
+      if (!exclusionReason) {
+        automationFinalOrderKeys.add(trainingKey(rec.date, rec.vendor, item.itemId));
+      }
+    }
+  }
+
+  for (const rec of records) {
+    if (rec.vendor !== vendor || rec.date < cutoffDate) continue;
+    const recordReason = getTrainingRecordExclusionReason(rec.vendor, rec.orderDay, rec.coverDays);
+    const coverDays = Array.isArray(rec.coverDays) ? rec.coverDays : [];
+    const coverDaysCount = coverDays.length;
+
+    for (const item of rec.items) {
+      const order = Number(item.order);
+      const hasAutomationFinalOrder = automationFinalOrderKeys.has(trainingKey(rec.date, rec.vendor, item.itemId));
+      const exclusionReason = recordReason
+        || (hasAutomationFinalOrder ? '자동화 finalOrder 우선 사용' : getTargetValueExclusionReason(item.order, 'order'));
+      const config = getItemById(item.itemId);
+      const stockValue = config ? readCompatibleTotalStock(item, config, settings) : item.totalStock;
+      const currentStock = convertStockToOrderUnits(item.itemId, Number(stockValue) || 0, settings);
+      const candidate = buildTargetCandidate({
+        id: targetCandidateId('today', rec.date, rec.vendor, item.itemId),
+        source: 'today',
+        date: rec.date,
+        vendor: rec.vendor,
+        orderDay: rec.orderDay,
+        coverDays,
+        coverDaysCount,
+        valueType: 'order',
+        finalOrder: Number.isFinite(order) ? order : 0,
+        currentStock,
+        excludedReason: exclusionReason,
+      });
+      addCandidate(item.itemId, candidate);
+    }
+  }
+
+  return result;
 }
 
-function getItemSafetyPolicy(itemId: string): ItemSafetyPolicy {
-  if (['m-beef', 'm-pork', 'm-chicken'].includes(itemId)) {
-    return { name: '고기류', floorRatio: 1, medianFloorRatio: 1, categoryMinimum: 1, allowCategoryMinimum: true };
-  }
-  if (itemId.startsWith('ms-')) {
-    const isBoxSauce = ['ms-salpa', 'ms-rose', 'ms-curry'].includes(itemId);
-    return { name: '소스류', floorRatio: 1, medianFloorRatio: 0.95, categoryMinimum: isBoxSauce ? 1 : 2, allowCategoryMinimum: true };
-  }
-  if (itemId.startsWith('mr-')) {
-    return { name: '냉장제품', floorRatio: 0.95, medianFloorRatio: 0.9, categoryMinimum: 1, allowCategoryMinimum: true };
-  }
-  if (itemId.startsWith('mf-')) {
-    return { name: '냉동제품', floorRatio: 1, medianFloorRatio: 0.95, categoryMinimum: 1, allowCategoryMinimum: true };
-  }
-  if (itemId.startsWith('mp-')) {
-    return { name: '포장용품', floorRatio: 1, medianFloorRatio: 0.95, categoryMinimum: 1, allowCategoryMinimum: true };
-  }
-  if (itemId.startsWith('mo-')) {
-    return { name: '비품류', floorRatio: 0.9, medianFloorRatio: 0.85, categoryMinimum: 0, allowCategoryMinimum: false };
-  }
-  if (itemId.startsWith('f-')) {
-    return { name: '파머스 품목', floorRatio: 0.95, medianFloorRatio: 0.9, categoryMinimum: getFarmersMinimumOrder(itemId), allowCategoryMinimum: true };
-  }
-  return { name: '기타 품목', floorRatio: 0.95, medianFloorRatio: 0.9, categoryMinimum: 0, allowCategoryMinimum: false };
+function buildTargetCandidate(input: {
+  id: string;
+  source: 'automation' | 'today';
+  date: string;
+  vendor: 'farmers' | 'marketbom';
+  orderDay: number;
+  coverDays: string[];
+  coverDaysCount: number;
+  valueType: 'finalOrder' | 'order';
+  finalOrder: number;
+  currentStock: number;
+  excludedReason: string | null;
+}): RecommendationTargetCandidate {
+  const safeFinalOrder = Math.max(0, Number(input.finalOrder) || 0);
+  const safeCoverDaysCount = Math.max(0, Number(input.coverDaysCount) || 0);
+  const historicalEstimatedDailyUsage = safeFinalOrder > 0 && safeCoverDaysCount > 0
+    ? safeFinalOrder / safeCoverDaysCount
+    : 0;
+  const historicalPreInboundExpectedConsumption = historicalEstimatedDailyUsage * getLeadDays(input.vendor);
+  const historicalCarryOver = Math.max(0, input.currentStock - historicalPreInboundExpectedConsumption);
+  const excludedReason = input.excludedReason || (safeFinalOrder <= 0 ? `${input.valueType} 없음` : undefined);
+  const historicalTargetCoverStock = excludedReason ? 0 : safeFinalOrder + historicalCarryOver;
+
+  return {
+    id: input.id,
+    source: input.source,
+    date: input.date,
+    vendor: input.vendor,
+    orderDay: input.orderDay,
+    coverDays: input.coverDays,
+    coverDaysCount: safeCoverDaysCount,
+    valueType: input.valueType,
+    historicalFinalOrder: safeFinalOrder,
+    historicalCurrentStock: Math.max(0, input.currentStock),
+    historicalEstimatedDailyUsage,
+    historicalPreInboundExpectedConsumption,
+    historicalCarryOver,
+    historicalTargetCoverStock,
+    usedForTarget: false,
+    excludedReason,
+  };
 }
 
-function getFarmersMinimumOrder(itemId: string): number {
-  switch (itemId) {
-    case 'f-salad':
-      return 2;
-    case 'f-broccoli':
-      return 4;
-    case 'f-paprika':
-      return 5;
-    case 'f-chive':
-      return 1;
-    default:
-      return 0;
+function selectTargetCandidates(
+  candidates: RecommendationTargetCandidate[],
+  vendor: 'farmers' | 'marketbom',
+  orderDay: number,
+  appliedCoverDays: string[]
+): {
+  candidates: RecommendationTargetCandidate[];
+  learnedTargetCoverStock: number;
+  averageTargetCoverStock: number;
+  fallbackLevel: number;
+  fallbackLabel: string;
+  confidence: string;
+} {
+  const valid = candidates.filter(candidate => !candidate.excludedReason && candidate.historicalTargetCoverStock > 0);
+  const sameOrderDay = valid.filter(candidate => candidate.orderDay === orderDay);
+  const samePattern = sameOrderDay.filter(candidate => sameCoverPattern(candidate.coverDays, appliedCoverDays));
+  const sameCount = sameOrderDay.filter(candidate => candidate.coverDaysCount === appliedCoverDays.length);
+
+  const fallbackOptions = [
+    { level: 1, label: '같은 업체/품목/발주요일/커버일 패턴', confidence: '신뢰도 높음', candidates: samePattern },
+    { level: 2, label: '같은 업체/품목/발주요일/커버일수', confidence: '신뢰도 보통', candidates: sameCount },
+    { level: 3, label: '같은 업체/품목 최근 정상 기록 전체', confidence: '신뢰도 낮음', candidates: valid },
+  ];
+
+  const selected = fallbackOptions.find(option => option.candidates.length > 0);
+  if (!selected) {
+    return {
+      candidates: [],
+      learnedTargetCoverStock: 0,
+      averageTargetCoverStock: 0,
+      fallbackLevel: 4,
+      fallbackLabel: `${vendor === 'farmers' ? '파머스' : '마켓봄'} 기존 estimatedDailyUsage 기반 fallback`,
+      confidence: '임시 추천',
+    };
   }
+
+  const values = selected.candidates.map(candidate => candidate.historicalTargetCoverStock);
+  return {
+    candidates: selected.candidates,
+    learnedTargetCoverStock: median(values),
+    averageTargetCoverStock: avg(values),
+    fallbackLevel: selected.level,
+    fallbackLabel: selected.label,
+    confidence: selected.confidence,
+  };
 }
 
-function getFloorWeight(carryOverRatio: number): number {
-  if (!Number.isFinite(carryOverRatio)) return 1;
-  if (carryOverRatio >= 1) return 0;
-  if (carryOverRatio <= 0.15) return 1;
-  if (carryOverRatio >= 0.85) return 0;
-  return Math.max(0, Math.min(1, (0.85 - carryOverRatio) / 0.7));
+function parseCoverDays(value: string): string[] {
+  return value
+    .split(',')
+    .map(day => day.trim())
+    .filter(Boolean);
 }
 
-function getFloorStatus(carryOverRatio: number, floorWeight: number): string {
-  if (floorWeight <= 0) return 'carryOver 충분: 평균/중앙값/최소 하한 해제';
-  if (carryOverRatio <= 0.15) return 'carryOver 낮음: 평균/중앙값 하한 적용';
-  return 'carryOver 일부 있음: 평균/중앙값 하한 약하게 적용';
+function sameCoverPattern(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((day, index) => day === b[index]);
 }
 
-function softenFloorCandidate(demandCandidate: number, floorCandidate: number, floorWeight: number): number {
-  if (floorCandidate <= 0 || floorCandidate <= demandCandidate) return Math.max(0, floorCandidate);
-  if (floorCandidate - demandCandidate <= 0.25) return demandCandidate;
-  if (floorWeight <= 0) return demandCandidate;
-  return demandCandidate + (floorCandidate - demandCandidate) * floorWeight;
+function targetCandidateId(source: 'automation' | 'today', date: string, vendor: string, itemId: string): string {
+  return `${source}__${date}__${vendor}__${itemId}`;
 }
 
-function getCategoryMinimumCandidate(
-  itemId: string,
-  policy: ItemSafetyPolicy,
-  context: {
-    averageOrderCandidate: number;
-    medianOrderCandidate: number;
-    trainingRecordCount: number;
-    coverDaysCount: number;
-    carryOverRatio: number;
-    postInboundCoverNeed: number;
-  }
-): number {
-  if (!policy.allowCategoryMinimum || policy.categoryMinimum <= 0) return 0;
-  if (context.postInboundCoverNeed <= 0) return 0;
-  if (context.carryOverRatio > 0.15) return 0;
-  if (context.trainingRecordCount < 2) return 0;
-  const reference = Math.max(context.averageOrderCandidate, context.medianOrderCandidate);
-  if (reference < 1) return 0;
-  if (policy.name === '소스류' && policy.categoryMinimum >= 2) {
-    if (context.coverDaysCount < 3 || reference < 2) return 0;
-  }
-  if (itemId.startsWith('f-') && reference < policy.categoryMinimum) return 0;
-  return policy.categoryMinimum;
+function getTargetValueExclusionReason(value: unknown, fieldName: 'finalOrder' | 'order'): string | null {
+  if (value === undefined || value === null || value === '') return `${fieldName} 없음`;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return '값이 0 또는 비정상';
+  return null;
 }
 
 function median(arr: number[]): number {
