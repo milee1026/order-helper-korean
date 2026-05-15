@@ -105,11 +105,44 @@ const ORDER_STEP: Record<string, number> = {
   'f-chive': 1,
 };
 
-/** Round a raw order quantity UP to the nearest valid orderable multiple */
-export function normalizeOrderQuantity(itemId: string, raw: number): number {
-  if (raw <= 0) return 0;
+export interface OrderRoundingContext {
+  averageOrderCandidate?: number;
+  medianOrderCandidate?: number;
+  carryOverRatio?: number;
+}
+
+export interface OrderRoundingResult {
+  value: number;
+  policy: string;
+  reason: string;
+}
+
+export function normalizeOrderQuantityWithPolicy(
+  itemId: string,
+  raw: number,
+  context: OrderRoundingContext = {}
+): OrderRoundingResult {
+  if (raw <= 0) {
+    return {
+      value: 0,
+      policy: '0 이하 추천',
+      reason: '추천 raw가 0 이하라 발주 추천을 0으로 처리',
+    };
+  }
   const step = ORDER_STEP[itemId] || 1;
-  return Math.ceil(raw / step) * step;
+  if (['m-beef', 'm-pork', 'm-chicken'].includes(itemId)) {
+    return normalizeMeatOrder(raw, context);
+  }
+  return {
+    value: Math.ceil(raw / step) * step,
+    policy: `발주 가능 단위(${step})로 올림`,
+    reason: '기본 발주 단위를 지키기 위해 올림 적용',
+  };
+}
+
+/** Round a raw order quantity to a valid orderable multiple. */
+export function normalizeOrderQuantity(itemId: string, raw: number): number {
+  return normalizeOrderQuantityWithPolicy(itemId, raw).value;
 }
 
 export function getOrderUnit(itemId: string): string {
@@ -176,5 +209,34 @@ export function fmtWithUnit(val: number | undefined, unit: string): string {
   const rounded = Math.round(val * 100) / 100;
   if (unit.includes('/')) return `${rounded}(${unit})`;
   return `${rounded}${unit}`;
+}
+
+function normalizeMeatOrder(raw: number, context: OrderRoundingContext): OrderRoundingResult {
+  const lower = Math.floor(raw);
+  const fraction = raw - lower;
+  const roundedUp = Math.ceil(raw);
+  if (lower > 0 && fraction > 0 && fraction <= 0.25) {
+    const reference = Math.max(
+      Number(context.averageOrderCandidate) || 0,
+      Number(context.medianOrderCandidate) || 0
+    );
+    const isSafeAgainstReference = reference <= 0 || lower >= reference * 0.9;
+    const hasVeryLowCarryOver = (Number(context.carryOverRatio) || 0) <= 0.15;
+    const referenceClearlyHigher = reference > 0 && lower < reference * 0.9;
+
+    if (isSafeAgainstReference && !(hasVeryLowCarryOver && referenceClearlyHigher)) {
+      return {
+        value: lower,
+        policy: '고기류 소수점 허용 정책',
+        reason: 'raw 소수점이 0.25 이하이고 내림값이 평균/중앙값 기준의 90% 이상이라 내림 허용',
+      };
+    }
+  }
+
+  return {
+    value: roundedUp,
+    policy: '고기류 보수적 올림',
+    reason: 'raw 소수점이 크거나 내림 시 평균/중앙값 기준보다 낮아질 수 있어 올림 적용',
+  };
 }
 

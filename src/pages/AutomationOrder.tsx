@@ -3,7 +3,7 @@ import { Vendor, RecorderType, AutomationItemData, AutomationRecord } from '@/ty
 import { getCoverDays, getDayOfWeek, DAY_NAMES_KR, getOrderDays } from '@/config/ordering';
 import { useRecords, useSettings } from '@/utils/storage';
 import { useAutomationRecords } from '@/utils/automationStorage';
-import { computeRecommendedOrder, getRecommendationAudits, getRecommendations } from '@/utils/recommendations';
+import { buildSafeCoverageRecommendationPlan, getRecommendationAudits, getRecommendations } from '@/utils/recommendations';
 import { addAutomationRecord, deleteAutomationDraft, getAutomationRecordsByDate, loadAutomationDraft, saveAutomationDraft } from '@/utils/automationStorage';
 import { getItemsByVendor } from '@/config/items';
 import { getAutoInboundFromPrevOrder, getAutoInboundSignature, shouldShowInbound } from '@/utils/inboundLogic';
@@ -12,7 +12,7 @@ import { AutoFarmersForm } from '@/components/AutoFarmersForm';
 import { AutoMarketbomForm } from '@/components/AutoMarketbomForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { convertStockToOrderUnits, normalizeOrderQuantity } from '@/utils/itemUnits';
+import { convertStockToOrderUnits, normalizeOrderQuantityWithPolicy } from '@/utils/itemUnits';
 import { getLeadDays } from '@/config/ordering';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -249,17 +249,26 @@ export function AutomationOrder() {
       }
       return {
         ...d,
-        recommendedOrder: normalizeOrderQuantity(
-          cfg.id,
-          computeRecommendedOrder(
+        recommendedOrder: (() => {
+          const rec = recommendations[cfg.id];
+          const plan = buildSafeCoverageRecommendationPlan(
+            cfg.id,
             convertStockToOrderUnits(cfg.id, d.currentStock, settings),
             d.defaultOrderCandidate,
-            convertStockToOrderUnits(cfg.id, d.minThresholdCandidate, settings),
             coverDaysCount,
             defaultCoverDaysCount,
-            leadDaysCount
-          )
-        ),
+            leadDaysCount,
+            {
+              medianOrderCandidate: rec?.medianOrderCandidate,
+              trainingRecordCount: rec?.trainingRecordCount,
+            }
+          );
+          return normalizeOrderQuantityWithPolicy(cfg.id, plan.recommendedRaw, {
+            averageOrderCandidate: d.defaultOrderCandidate,
+            medianOrderCandidate: rec?.medianOrderCandidate,
+            carryOverRatio: plan.carryOverRatio,
+          }).value;
+        })(),
       };
     });
 

@@ -3,7 +3,7 @@ import { AutomationItemData, AppSettings, DailyRecord } from '@/types';
 import { Input } from '@/components/ui/input';
 import { RatioSelector } from '@/components/RatioSelector';
 import { RecommendationAuditDetails } from '@/components/RecommendationAuditDetails';
-import { buildCoverageRecommendationPlan, getStockStatus, type RecommendationAudit } from '@/utils/recommendations';
+import { buildSafeCoverageRecommendationPlan, getStockStatus, type RecommendationAudit } from '@/utils/recommendations';
 import { useRecords } from '@/utils/storage';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -11,13 +11,20 @@ import {
   formatQuantityWithUnit,
   getOrderUnit,
   getStockUnit,
-  normalizeOrderQuantity,
+  normalizeOrderQuantityWithPolicy,
 } from '@/utils/itemUnits';
+
+interface RecommendationSummary {
+  defaultOrderCandidate: number;
+  minThresholdCandidate: number;
+  medianOrderCandidate?: number;
+  trainingRecordCount?: number;
+}
 
 interface Props {
   data: Record<string, AutomationItemData>;
   onChange: (itemId: string, data: AutomationItemData) => void;
-  recommendations: Record<string, { defaultOrderCandidate: number; minThresholdCandidate: number }>;
+  recommendations: Record<string, RecommendationSummary>;
   settings: AppSettings;
   showInbound?: boolean;
   coverDaysCount?: number;
@@ -133,7 +140,7 @@ function useBroccoliAvgPerKg(records: DailyRecord[]): number | null {
 function getAutoItem(
   data: Record<string, AutomationItemData>,
   id: string,
-  rec: { defaultOrderCandidate: number; minThresholdCandidate: number } | undefined
+  rec: RecommendationSummary | undefined
 ): AutomationItemData {
   return data[id] || {
     itemId: id,
@@ -207,8 +214,15 @@ export function AutoFarmersForm({
     const defOrd = rec?.defaultOrderCandidate || current.defaultOrderCandidate;
     const minThr = rec?.minThresholdCandidate || current.minThresholdCandidate;
     const currentStockOrderUnits = convertStockToOrderUnits(id, stock);
-    const plan = buildCoverageRecommendationPlan(currentStockOrderUnits, defOrd, safeCoverDays, safeDefaultDays, safeLeadDays);
-    const recommended = normalizeOrderQuantity(id, plan.recommendedRaw);
+    const plan = buildSafeCoverageRecommendationPlan(id, currentStockOrderUnits, defOrd, safeCoverDays, safeDefaultDays, safeLeadDays, {
+      medianOrderCandidate: rec?.medianOrderCandidate,
+      trainingRecordCount: rec?.trainingRecordCount,
+    });
+    const recommended = normalizeOrderQuantityWithPolicy(id, plan.recommendedRaw, {
+      averageOrderCandidate: defOrd,
+      medianOrderCandidate: rec?.medianOrderCandidate,
+      carryOverRatio: plan.carryOverRatio,
+    }).value;
 
     onChange(id, {
       ...current,
@@ -271,10 +285,18 @@ export function AutoFarmersForm({
         const d = getAutoItem(data, item.id, rec);
         const currentStockOrderUnits = convertStockToOrderUnits(item.id, d.currentStock);
         const minThresholdOrderUnits = convertStockToOrderUnits(item.id, d.minThresholdCandidate);
-        const plan = buildCoverageRecommendationPlan(currentStockOrderUnits, d.defaultOrderCandidate, safeCoverDays, safeDefaultDays, safeLeadDays);
+        const plan = buildSafeCoverageRecommendationPlan(item.id, currentStockOrderUnits, d.defaultOrderCandidate, safeCoverDays, safeDefaultDays, safeLeadDays, {
+          medianOrderCandidate: rec?.medianOrderCandidate,
+          trainingRecordCount: rec?.trainingRecordCount,
+        });
         const status = hasItemInput(d) ? getStockStatus(currentStockOrderUnits, minThresholdOrderUnits) : '-';
         const hasInput = hasItemInput(d);
-        const roundedRecommendation = normalizeOrderQuantity(item.id, plan.recommendedRaw);
+        const rounding = normalizeOrderQuantityWithPolicy(item.id, plan.recommendedRaw, {
+          averageOrderCandidate: d.defaultOrderCandidate,
+          medianOrderCandidate: rec?.medianOrderCandidate,
+          carryOverRatio: plan.carryOverRatio,
+        });
+        const roundedRecommendation = rounding.value;
 
         return (
           <div key={item.id} className="border rounded bg-background">
@@ -344,6 +366,8 @@ export function AutoFarmersForm({
                 leadDays={safeLeadDays}
                 plan={plan}
                 roundedRecommendation={roundedRecommendation}
+                roundingPolicy={rounding.policy}
+                roundingReason={rounding.reason}
                 orderUnit={getOrderUnit(item.id)}
                 stockUnit={getStockUnit(item.id)}
                 hasInput={hasInput}

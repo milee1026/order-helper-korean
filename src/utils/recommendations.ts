@@ -5,6 +5,8 @@ import { getKstDateString, shiftKstDateString } from '@/utils/date';
 interface ItemRecommendation {
   defaultOrderCandidate: number;
   minThresholdCandidate: number;
+  medianOrderCandidate: number;
+  trainingRecordCount: number;
   avgOrderByDay: Record<number, number>;
   modeOrderByDay: Record<number, number>;
 }
@@ -41,8 +43,19 @@ export interface RecommendationAudit {
   excludedRecords: RecommendationTrainingExclusion[];
   estimatedDailyUsage: number;
   averageOrderCandidate: number;
+  medianOrderCandidate: number;
   minThresholdCandidate: number;
   totalStockSampleCount: number;
+}
+
+export interface RecommendationAdjustment {
+  label: string;
+  reason: string;
+}
+
+export interface SafetyRecommendationOptions {
+  medianOrderCandidate?: number;
+  trainingRecordCount?: number;
 }
 
 export function getRecommendations(
@@ -118,11 +131,14 @@ export function getRecommendations(
     const defaultCandidate = estimatedDailyUsage > 0
       ? estimatedDailyUsage * currentDefaultCoverDays
       : (dayOrders.length > 0 ? mode(dayOrders) : (st.orderQuantities.length > 0 ? mode(st.orderQuantities) : 0));
+    const medianOrderCandidate = st.orderQuantities.length > 0 ? median(st.orderQuantities) : 0;
     const minThreshold = st.totalStocks.length > 0 ? median(st.totalStocks) : 0;
 
     result[itemId] = {
       defaultOrderCandidate: defaultCandidate,
       minThresholdCandidate: minThreshold,
+      medianOrderCandidate,
+      trainingRecordCount: st.orderQuantities.length,
       avgOrderByDay: Object.fromEntries(
         Object.entries(st.orderByDay).map(([d, vals]) => [d, avg(vals)])
       ),
@@ -169,6 +185,7 @@ export function getRecommendationAudits(
         excludedRecords: [],
         estimatedDailyUsage: 0,
         averageOrderCandidate: 0,
+        medianOrderCandidate: 0,
         minThresholdCandidate: 0,
         totalStockSampleCount: 0,
       };
@@ -313,10 +330,12 @@ export function getRecommendationAudits(
     const defaultCandidate = estimatedDailyUsage > 0
       ? estimatedDailyUsage * currentDefaultCoverDays
       : (dayOrders.length > 0 ? mode(dayOrders) : (st.orderQuantities.length > 0 ? mode(st.orderQuantities) : 0));
+    const medianOrderCandidate = st.orderQuantities.length > 0 ? median(st.orderQuantities) : 0;
     const minThreshold = st.totalStocks.length > 0 ? median(st.totalStocks) : 0;
 
     audit.estimatedDailyUsage = estimatedDailyUsage;
     audit.averageOrderCandidate = defaultCandidate;
+    audit.medianOrderCandidate = medianOrderCandidate;
     audit.minThresholdCandidate = minThreshold;
     audit.totalStockSampleCount = st.totalStocks.length;
   }
@@ -329,7 +348,16 @@ export interface CoverageRecommendationPlan {
   estimatedPreInboundConsumption: number;
   postInboundCoverNeed: number;
   carryOverStock: number;
+  carryOverRatio: number;
+  recommendationByDemand: number;
+  averageFloorCandidate: number;
+  medianFloorCandidate: number;
+  categoryMinimumCandidate: number;
+  floorWeight: number;
+  floorStatus: string;
+  recommendationRawBeforeRounding: number;
   recommendedRaw: number;
+  appliedAdjustments: RecommendationAdjustment[];
 }
 
 export function buildCoverageRecommendationPlan(
@@ -344,12 +372,22 @@ export function buildCoverageRecommendationPlan(
   const safeLeadDays = Number.isFinite(leadDaysCount) && leadDaysCount > 0 ? leadDaysCount : 0;
 
   if (defaultOrderCandidate <= 0) {
+    const carryOverStock = Math.max(0, currentStock);
     return {
       estimatedDailyUsage: 0,
       estimatedPreInboundConsumption: 0,
       postInboundCoverNeed: 0,
-      carryOverStock: Math.max(0, currentStock),
+      carryOverStock,
+      carryOverRatio: 1,
+      recommendationByDemand: 0,
+      averageFloorCandidate: 0,
+      medianFloorCandidate: 0,
+      categoryMinimumCandidate: 0,
+      floorWeight: 0,
+      floorStatus: '평균발주량이 없어 하한 보정을 적용하지 않음',
+      recommendationRawBeforeRounding: 0,
       recommendedRaw: 0,
+      appliedAdjustments: [],
     };
   }
 
@@ -360,31 +398,146 @@ export function buildCoverageRecommendationPlan(
   const carryOverStock = Math.max(0, currentStock - estimatedPreInboundConsumption);
 
   const postInboundCoverNeed = estimatedDailyUsage * safeCoverDays;
+  const recommendationByDemand = Math.max(0, postInboundCoverNeed - carryOverStock);
+  const carryOverRatio = postInboundCoverNeed > 0 ? carryOverStock / postInboundCoverNeed : 1;
 
   return {
     estimatedDailyUsage,
     estimatedPreInboundConsumption,
     postInboundCoverNeed,
     carryOverStock,
-    recommendedRaw: Math.max(0, postInboundCoverNeed - carryOverStock),
+    carryOverRatio,
+    recommendationByDemand,
+    averageFloorCandidate: 0,
+    medianFloorCandidate: 0,
+    categoryMinimumCandidate: 0,
+    floorWeight: 0,
+    floorStatus: '기본 수요 계산만 적용',
+    recommendationRawBeforeRounding: recommendationByDemand,
+    recommendedRaw: recommendationByDemand,
+    appliedAdjustments: [],
   };
 }
 
-export function computeRecommendedOrder(
+export function buildSafeCoverageRecommendationPlan(
+  itemId: string,
   currentStock: number,
   defaultOrderCandidate: number,
-  minThresholdCandidate: number,
   coverDaysCount = 0,
   defaultCoverDaysCount = 0,
-  leadDaysCount = 0
-): number {
-  void minThresholdCandidate;
-  return buildCoverageRecommendationPlan(
+  leadDaysCount = 0,
+  options: SafetyRecommendationOptions = {}
+): CoverageRecommendationPlan {
+  const base = buildCoverageRecommendationPlan(
     currentStock,
     defaultOrderCandidate,
     coverDaysCount,
     defaultCoverDaysCount,
     leadDaysCount
+  );
+  const policy = getItemSafetyPolicy(itemId);
+  const medianOrderCandidate = Math.max(0, Number(options.medianOrderCandidate) || 0);
+  const trainingRecordCount = Math.max(0, Number(options.trainingRecordCount) || 0);
+  const appliedAdjustments: RecommendationAdjustment[] = [];
+
+  if (base.postInboundCoverNeed <= 0 || base.recommendationByDemand <= 0) {
+    return {
+      ...base,
+      floorStatus: '입고 후 커버 필요량이 없어 하한 보정을 적용하지 않음',
+      appliedAdjustments,
+    };
+  }
+
+  const floorWeight = getFloorWeight(base.carryOverRatio);
+  const floorStatus = getFloorStatus(base.carryOverRatio, floorWeight);
+
+  if (floorWeight <= 0) {
+    appliedAdjustments.push({
+      label: '하한 해제',
+      reason: 'carryOver가 입고 후 커버 필요량을 충분히 덮어 평균/중앙값/최소 하한을 모두 끔',
+    });
+    return {
+      ...base,
+      floorWeight,
+      floorStatus,
+      appliedAdjustments,
+    };
+  }
+
+  const averageFloorBase = defaultOrderCandidate > 0 ? defaultOrderCandidate * policy.floorRatio : 0;
+  const medianFloorBase = medianOrderCandidate > 0 ? medianOrderCandidate * policy.medianFloorRatio : 0;
+  const averageFloorCandidate = softenFloorCandidate(base.recommendationByDemand, averageFloorBase, floorWeight);
+  const medianFloorCandidate = softenFloorCandidate(base.recommendationByDemand, medianFloorBase, floorWeight);
+  const categoryMinimumBase = getCategoryMinimumCandidate(itemId, policy, {
+    averageOrderCandidate: defaultOrderCandidate,
+    medianOrderCandidate,
+    trainingRecordCount,
+    coverDaysCount: Number.isFinite(coverDaysCount) && coverDaysCount > 0 ? coverDaysCount : defaultCoverDaysCount,
+    carryOverRatio: base.carryOverRatio,
+    postInboundCoverNeed: base.postInboundCoverNeed,
+  });
+  const categoryMinimumCandidate = softenFloorCandidate(base.recommendationByDemand, categoryMinimumBase, floorWeight);
+
+  let recommendationRawBeforeRounding = Math.max(
+    base.recommendationByDemand,
+    averageFloorCandidate,
+    medianFloorCandidate,
+    categoryMinimumCandidate
+  );
+
+  if (averageFloorCandidate > base.recommendationByDemand) {
+    appliedAdjustments.push({
+      label: '평균 하한 적용',
+      reason: `${policy.name} floorRatio ${policy.floorRatio} 기준, carryOver 상태에 따라 약하게 반영`,
+    });
+  }
+  if (medianFloorCandidate > Math.max(base.recommendationByDemand, averageFloorCandidate)) {
+    appliedAdjustments.push({
+      label: '중앙값 하한 적용',
+      reason: `${policy.name} medianFloorRatio ${policy.medianFloorRatio} 기준, 최근 정상 중앙값 반영`,
+    });
+  }
+  if (categoryMinimumCandidate > Math.max(base.recommendationByDemand, averageFloorCandidate, medianFloorCandidate)) {
+    appliedAdjustments.push({
+      label: '최소 안전 추천 적용',
+      reason: '학습 기록이 충분하고 carryOver가 낮아 제한적 최소 안전 추천값을 반영',
+    });
+  }
+
+  recommendationRawBeforeRounding = Math.max(0, recommendationRawBeforeRounding);
+
+  return {
+    ...base,
+    averageFloorCandidate,
+    medianFloorCandidate,
+    categoryMinimumCandidate,
+    floorWeight,
+    floorStatus,
+    recommendationRawBeforeRounding,
+    recommendedRaw: recommendationRawBeforeRounding,
+    appliedAdjustments,
+  };
+}
+
+export function computeRecommendedOrder(
+  itemId: string,
+  currentStock: number,
+  defaultOrderCandidate: number,
+  minThresholdCandidate: number,
+  coverDaysCount = 0,
+  defaultCoverDaysCount = 0,
+  leadDaysCount = 0,
+  options: SafetyRecommendationOptions = {}
+): number {
+  void minThresholdCandidate;
+  return buildSafeCoverageRecommendationPlan(
+    itemId,
+    currentStock,
+    defaultOrderCandidate,
+    coverDaysCount,
+    defaultCoverDaysCount,
+    leadDaysCount,
+    options
   ).recommendedRaw;
 }
 
@@ -401,6 +554,101 @@ export function getStockStatus(
 function avg(arr: number[]): number {
   if (!arr.length) return 0;
   return Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100;
+}
+
+interface ItemSafetyPolicy {
+  name: string;
+  floorRatio: number;
+  medianFloorRatio: number;
+  categoryMinimum: number;
+  allowCategoryMinimum: boolean;
+}
+
+function getItemSafetyPolicy(itemId: string): ItemSafetyPolicy {
+  if (['m-beef', 'm-pork', 'm-chicken'].includes(itemId)) {
+    return { name: '고기류', floorRatio: 1, medianFloorRatio: 1, categoryMinimum: 1, allowCategoryMinimum: true };
+  }
+  if (itemId.startsWith('ms-')) {
+    const isBoxSauce = ['ms-salpa', 'ms-rose', 'ms-curry'].includes(itemId);
+    return { name: '소스류', floorRatio: 1, medianFloorRatio: 0.95, categoryMinimum: isBoxSauce ? 1 : 2, allowCategoryMinimum: true };
+  }
+  if (itemId.startsWith('mr-')) {
+    return { name: '냉장제품', floorRatio: 0.95, medianFloorRatio: 0.9, categoryMinimum: 1, allowCategoryMinimum: true };
+  }
+  if (itemId.startsWith('mf-')) {
+    return { name: '냉동제품', floorRatio: 1, medianFloorRatio: 0.95, categoryMinimum: 1, allowCategoryMinimum: true };
+  }
+  if (itemId.startsWith('mp-')) {
+    return { name: '포장용품', floorRatio: 1, medianFloorRatio: 0.95, categoryMinimum: 1, allowCategoryMinimum: true };
+  }
+  if (itemId.startsWith('mo-')) {
+    return { name: '비품류', floorRatio: 0.9, medianFloorRatio: 0.85, categoryMinimum: 0, allowCategoryMinimum: false };
+  }
+  if (itemId.startsWith('f-')) {
+    return { name: '파머스 품목', floorRatio: 0.95, medianFloorRatio: 0.9, categoryMinimum: getFarmersMinimumOrder(itemId), allowCategoryMinimum: true };
+  }
+  return { name: '기타 품목', floorRatio: 0.95, medianFloorRatio: 0.9, categoryMinimum: 0, allowCategoryMinimum: false };
+}
+
+function getFarmersMinimumOrder(itemId: string): number {
+  switch (itemId) {
+    case 'f-salad':
+      return 2;
+    case 'f-broccoli':
+      return 4;
+    case 'f-paprika':
+      return 5;
+    case 'f-chive':
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function getFloorWeight(carryOverRatio: number): number {
+  if (!Number.isFinite(carryOverRatio)) return 1;
+  if (carryOverRatio >= 1) return 0;
+  if (carryOverRatio <= 0.15) return 1;
+  if (carryOverRatio >= 0.85) return 0;
+  return Math.max(0, Math.min(1, (0.85 - carryOverRatio) / 0.7));
+}
+
+function getFloorStatus(carryOverRatio: number, floorWeight: number): string {
+  if (floorWeight <= 0) return 'carryOver 충분: 평균/중앙값/최소 하한 해제';
+  if (carryOverRatio <= 0.15) return 'carryOver 낮음: 평균/중앙값 하한 적용';
+  return 'carryOver 일부 있음: 평균/중앙값 하한 약하게 적용';
+}
+
+function softenFloorCandidate(demandCandidate: number, floorCandidate: number, floorWeight: number): number {
+  if (floorCandidate <= 0 || floorCandidate <= demandCandidate) return Math.max(0, floorCandidate);
+  if (floorCandidate - demandCandidate <= 0.25) return demandCandidate;
+  if (floorWeight <= 0) return demandCandidate;
+  return demandCandidate + (floorCandidate - demandCandidate) * floorWeight;
+}
+
+function getCategoryMinimumCandidate(
+  itemId: string,
+  policy: ItemSafetyPolicy,
+  context: {
+    averageOrderCandidate: number;
+    medianOrderCandidate: number;
+    trainingRecordCount: number;
+    coverDaysCount: number;
+    carryOverRatio: number;
+    postInboundCoverNeed: number;
+  }
+): number {
+  if (!policy.allowCategoryMinimum || policy.categoryMinimum <= 0) return 0;
+  if (context.postInboundCoverNeed <= 0) return 0;
+  if (context.carryOverRatio > 0.15) return 0;
+  if (context.trainingRecordCount < 2) return 0;
+  const reference = Math.max(context.averageOrderCandidate, context.medianOrderCandidate);
+  if (reference < 1) return 0;
+  if (policy.name === '소스류' && policy.categoryMinimum >= 2) {
+    if (context.coverDaysCount < 3 || reference < 2) return 0;
+  }
+  if (itemId.startsWith('f-') && reference < policy.categoryMinimum) return 0;
+  return policy.categoryMinimum;
 }
 
 function median(arr: number[]): number {
